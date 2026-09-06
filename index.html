@@ -26,6 +26,10 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:#DCE1E8;font-family:var(--font);color:var(--text);}
   body{display:flex;justify-content:center;min-height:100vh;}
+  /* Copy/save deterrents (not real DRM — a determined user can bypass via dev tools) */
+  body{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text;-webkit-touch-callout:default;}
+  img,video{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   #app-shell{
     width:100%;max-width:480px;min-height:100vh;background:var(--bg);
     display:flex;flex-direction:column;position:relative;overflow-x:hidden;
@@ -473,8 +477,8 @@
   <div class="video-modal-content">
     <button class="video-modal-close" onclick="closeVideoModal()">✕</button>
     <div class="video-modal-title" id="video-modal-title"></div>
-    <video id="video-modal-player" controls playsinline></video>
-    <img id="video-modal-image" alt="" style="display:none;">
+    <video id="video-modal-player" controls playsinline controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture oncontextmenu="return false"></video>
+    <img id="video-modal-image" alt="" style="display:none;" draggable="false" oncontextmenu="return false">
   </div>
 </div>
 
@@ -1007,6 +1011,17 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// Copy/save deterrents (right-click, drag-to-save, copy/cut). This is best-effort only —
+// it discourages casual copying but cannot stop dev tools, view-source, or screenshots.
+function isEditableTarget(t){
+  const tag = (t && t.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea';
+}
+document.addEventListener('contextmenu', e => { if(!isEditableTarget(e.target)) e.preventDefault(); });
+document.addEventListener('dragstart', e => e.preventDefault());
+document.addEventListener('copy', e => { if(!isEditableTarget(e.target)) e.preventDefault(); });
+document.addEventListener('cut', e => { if(!isEditableTarget(e.target)) e.preventDefault(); });
+
 /* ============================= I18N ============================= */
 function t(key){ return CONTENT[STATE.lang][key]; }
 
@@ -1308,6 +1323,8 @@ function careVideoBlock(sec){
   return `
     <div class="care-video" id="carevid-${sec.video}" onclick="maybeOpenCareVideo('${sec.video}')">
       <video class="care-video-el" muted preload="metadata" playsinline
+        controlsList="nodownload noremoteplayback" disablePictureInPicture
+        oncontextmenu="return false" draggable="false"
         onloadedmetadata="document.getElementById('carevid-${sec.video}').classList.add('has-video')"
         onloadeddata="document.getElementById('carevid-${sec.video}').classList.add('has-video')"
         onerror="this.remove()"
@@ -1400,11 +1417,14 @@ function renderExerciseList(){
         <div class="ex-figure" id="fig-${ex.id}" onclick="maybeOpenVideo('${ex.id}')">
           <span class="ex-figure-fallback">🖼</span>
           <video class="ex-figure-video" muted preload="metadata" playsinline
+            controlsList="nodownload noremoteplayback" disablePictureInPicture
+            oncontextmenu="return false" draggable="false"
             onloadedmetadata="document.getElementById('fig-${ex.id}').classList.add('has-video')"
             onloadeddata="document.getElementById('fig-${ex.id}').classList.add('has-video')"
             onerror="this.remove()"
             src="videos/${ex.id}.mp4"></video>
           <img class="ex-figure-img"
+            oncontextmenu="return false" draggable="false"
             onload="document.getElementById('fig-${ex.id}').classList.add('has-image')"
             onerror="this.remove()"
             src="images/${ex.id}.jpg">
