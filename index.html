@@ -128,12 +128,15 @@
   .acc-body ul{margin:0;padding:2px 16px 16px 40px;}
   .acc-body li{font-size:13.5px;line-height:1.5;margin-bottom:7px;color:#3a3a3a;}
   .care-video{display:none;position:relative;border-radius:12px;overflow:hidden;margin:2px 16px 14px;background:#000;cursor:pointer;}
-  .care-video.has-video{display:block;}
+  .care-video.has-video,.care-video.has-image{display:block;}
   .care-video-el{width:100%;max-height:180px;display:block;object-fit:cover;}
+  .care-video-img{width:100%;max-height:180px;display:none;object-fit:cover;}
+  .care-video.has-image:not(.has-video) .care-video-el{display:none;}
+  .care-video.has-image:not(.has-video) .care-video-img{display:block;}
   .care-video-play-badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.55);color:#fff;width:32px;height:32px;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:13px;}
   .care-video.has-video .care-video-play-badge{display:flex;}
   .care-video-caption-bar{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,0.78));color:#fff;font-size:12.5px;font-weight:700;padding:22px 12px 10px;display:none;}
-  .care-video.has-video .care-video-caption-bar{display:block;}
+  .care-video.has-video .care-video-caption-bar,.care-video.has-image .care-video-caption-bar{display:block;}
 
   /* ---------- Exercises ---------- */
   .phase-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;}
@@ -1320,6 +1323,11 @@ function careVideoBlock(sec){
         onloadeddata="document.getElementById('carevid-${sec.video}').classList.add('has-video')"
         onerror="this.remove()"
         src="videos/${sec.video}.mp4"></video>
+      <img class="care-video-img"
+        oncontextmenu="return false" draggable="false"
+        onload="document.getElementById('carevid-${sec.video}').classList.add('has-image')"
+        onerror="this.remove()"
+        src="images/${sec.video}.jpg">
       <div class="care-video-play-badge">▶</div>
       <div class="care-video-caption-bar">${sec.videoLabel||''}</div>
     </div>`;
@@ -1490,9 +1498,11 @@ function maybeOpenVideo(exId){
 
 function maybeOpenCareVideo(videoId){
   const el = document.getElementById('carevid-'+videoId);
-  if(!el || !el.classList.contains('has-video')) return; // no video available yet
+  if(!el) return;
   const captionEl = el.querySelector('.care-video-caption-bar');
-  openVideoModalGeneric(videoId, captionEl ? captionEl.textContent : '');
+  const title = captionEl ? captionEl.textContent : '';
+  if(el.classList.contains('has-video')) openVideoModalGeneric(videoId, title);
+  else if(el.classList.contains('has-image')) openImageModal(videoId, title);
 }
 
 function closeVideoModal(){
