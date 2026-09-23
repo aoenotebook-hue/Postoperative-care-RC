@@ -184,8 +184,11 @@
 
   /* ---------- Resources ---------- */
   .resource-card{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(20,30,50,0.06);text-decoration:none;color:inherit;}
-  .resource-icon{width:46px;height:46px;border-radius:12px;background:#EAF0F6;color:var(--care);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;}
+  .resource-icon{width:46px;height:46px;border-radius:12px;background:#EAF0F6;color:var(--care);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;overflow:hidden;}
   .resource-icon.video{background:#FDECEC;color:var(--danger);}
+  .resource-icon.has-img{width:64px;height:64px;}
+  .resource-icon img{width:100%;height:100%;object-fit:cover;display:block;}
+  .resource-icon.logo img{object-fit:contain;padding:8px;background:#fff;}
   .resource-title{font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px;}
   .resource-desc{font-size:12.5px;color:var(--muted);line-height:1.4;}
   .resource-source{font-size:11px;color:var(--teal);font-weight:600;margin-top:4px;}
@@ -688,9 +691,9 @@ en: {
   resourcesTitle:"Additional Resources",
   resourcesIntro:"A few outside resources you may find helpful during your recovery.",
   resources:[
-    { icon:"🌐", type:"article", title:"Our Clinic Website", desc:"Visit our website for more information about your care.", source:"Dr. Sorawut Thamyongkit", url:"https://rueortho.vercel.app" },
-    { icon:"📖", type:"article", title:"What Is a Rotator Cuff Tear?", desc:"Overview of causes, symptoms, diagnosis, and treatment options.", source:"Mahidol University Faculty of Physical Therapy", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_1/" },
-    { icon:"📋", type:"article", title:"Self-Care & Exercise Guide", desc:"Phase-by-phase self-care and exercises for recovery, with or without surgery.", source:"Mahidol University Faculty of Physical Therapy", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_2/" },
+    { icon:"🌐", type:"article", title:"Our Clinic Website", desc:"Visit our website for more information about your care.", source:"Dr. Sorawut Thamyongkit", url:"https://rueortho.vercel.app", img:"images/clinic-logo.png", imgFit:"contain" },
+    { icon:"📖", type:"article", title:"What Is a Rotator Cuff Tear?", desc:"Overview of causes, symptoms, diagnosis, and treatment options.", source:"Mahidol University Faculty of Physical Therapy", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_1/", img:"images/res-rotator-cuff-anatomy.jpg" },
+    { icon:"📋", type:"article", title:"Self-Care & Exercise Guide", desc:"Phase-by-phase self-care and exercises for recovery, with or without surgery.", source:"Mahidol University Faculty of Physical Therapy", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_2/", img:"images/res-self-care-guide.jpg" },
     { icon:"▶", type:"video", title:"Exercise Demonstration Video", desc:"A video from a physical therapy education playlist.", source:"YouTube", url:"https://www.youtube.com/watch?v=5plcNsiy6Vs&list=PLZmZQ0hKtGTVT8FbqIS-cU_4Yc-a_WsQe&index=22" },
     { icon:"▶", type:"video", title:"Early Shoulder Stretches After Surgery", desc:"Gentle movements to keep range of motion and prevent stiffness, starting with the pendulum exercise in your sling.", source:"YouTube", url:"https://www.youtube.com/watch?v=hsauKSU_Qww&t=235s" },
   ],
@@ -914,9 +917,9 @@ th: {
   resourcesTitle:"แหล่งข้อมูลเพิ่มเติม",
   resourcesIntro:"แหล่งข้อมูลภายนอกที่อาจเป็นประโยชน์ระหว่างการฟื้นตัวของท่าน",
   resources:[
-    { icon:"🌐", type:"article", title:"เว็บไซต์คลินิกของเรา", desc:"เยี่ยมชมเว็บไซต์ของเราเพื่อข้อมูลเพิ่มเติมเกี่ยวกับการดูแลของท่าน", source:"นพ.สรวุฒิ ธรรมยงค์กิจ", url:"https://rueortho.vercel.app" },
-    { icon:"📖", type:"article", title:"เส้นเอ็นหมุนไหล่ฉีกขาดคืออะไร?", desc:"ภาพรวมสาเหตุ อาการ การวินิจฉัย และแนวทางการรักษา", source:"คณะกายภาพบำบัด มหาวิทยาลัยมหิดล", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_1/" },
-    { icon:"📋", type:"article", title:"คู่มือดูแลตัวเองและท่าบริหาร", desc:"การดูแลตัวเองและท่าบริหารแต่ละระยะ ทั้งแบบผ่าตัดและไม่ผ่าตัด", source:"คณะกายภาพบำบัด มหาวิทยาลัยมหิดล", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_2/" },
+    { icon:"🌐", type:"article", title:"เว็บไซต์คลินิกของเรา", desc:"เยี่ยมชมเว็บไซต์ของเราเพื่อข้อมูลเพิ่มเติมเกี่ยวกับการดูแลของท่าน", source:"นพ.สรวุฒิ ธรรมยงค์กิจ", url:"https://rueortho.vercel.app", img:"images/clinic-logo.png", imgFit:"contain" },
+    { icon:"📖", type:"article", title:"เส้นเอ็นหมุนไหล่ฉีกขาดคืออะไร?", desc:"ภาพรวมสาเหตุ อาการ การวินิจฉัย และแนวทางการรักษา", source:"คณะกายภาพบำบัด มหาวิทยาลัยมหิดล", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_1/", img:"images/res-rotator-cuff-anatomy.jpg" },
+    { icon:"📋", type:"article", title:"คู่มือดูแลตัวเองและท่าบริหาร", desc:"การดูแลตัวเองและท่าบริหารแต่ละระยะ ทั้งแบบผ่าตัดและไม่ผ่าตัด", source:"คณะกายภาพบำบัด มหาวิทยาลัยมหิดล", url:"https://pt.mahidol.ac.th/ptcenter/knowledge-article/rotatorcuff_tear_2/", img:"images/res-self-care-guide.jpg" },
     { icon:"▶", type:"video", title:"วิดีโอสาธิตท่าบริหาร", desc:"หนึ่งในชุดวิดีโอให้ความรู้ด้านกายภาพบำบัด", source:"YouTube", url:"https://www.youtube.com/watch?v=5plcNsiy6Vs&list=PLZmZQ0hKtGTVT8FbqIS-cU_4Yc-a_WsQe&index=22" },
     { icon:"▶", type:"video", title:"ท่ายืดหัวไหล่ระยะแรกหลังผ่าตัด", desc:"ท่าเคลื่อนไหวเบาๆ เพื่อคงช่วงการเคลื่อนไหวและป้องกันข้อติด เริ่มจากท่าแกว่งแขนขณะใส่สลิง", source:"YouTube", url:"https://www.youtube.com/watch?v=hsauKSU_Qww&t=235s" },
   ],
@@ -1453,11 +1456,16 @@ function renderPrivacy(){
 }
 
 /* ============================= RENDER: RESOURCES ============================= */
+function resourceIconFallback(img){
+  const box = img.parentElement;
+  box.classList.remove('has-img','logo');
+  box.textContent = img.dataset.fallbackIcon || '';
+}
 function renderResources(){
   const c = CONTENT[STATE.lang];
   document.getElementById('resources-list').innerHTML = c.resources.map(r=>`
     <a class="resource-card" href="${r.url}" target="_blank" rel="noopener noreferrer">
-      <div class="resource-icon ${r.type==='video'?'video':''}">${r.icon}</div>
+      <div class="resource-icon ${r.type==='video'?'video':''} ${r.img?'has-img':''} ${r.imgFit==='contain'?'logo':''}">${r.img?`<img src="${r.img}" alt="" loading="lazy" data-fallback-icon="${r.icon}" onerror="resourceIconFallback(this)">`:r.icon}</div>
       <div style="flex:1;">
         <div class="resource-title">${r.title}</div>
         <div class="resource-desc">${r.desc}</div>
