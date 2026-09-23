@@ -1456,11 +1456,16 @@ function renderPrivacy(){
 }
 
 /* ============================= RENDER: RESOURCES ============================= */
+function resourceIconFallback(img){
+  const box = img.parentElement;
+  box.classList.remove('has-img','logo');
+  box.textContent = img.dataset.fallbackIcon || '';
+}
 function renderResources(){
   const c = CONTENT[STATE.lang];
   document.getElementById('resources-list').innerHTML = c.resources.map(r=>`
     <a class="resource-card" href="${r.url}" target="_blank" rel="noopener noreferrer">
-      <div class="resource-icon ${r.type==='video'?'video':''} ${r.img?'has-img':''} ${r.imgFit==='contain'?'logo':''}">${r.img?`<img src="${r.img}" alt="" loading="lazy">`:r.icon}</div>
+      <div class="resource-icon ${r.type==='video'?'video':''} ${r.img?'has-img':''} ${r.imgFit==='contain'?'logo':''}">${r.img?`<img src="${r.img}" alt="" loading="lazy" data-fallback-icon="${r.icon}" onerror="resourceIconFallback(this)">`:r.icon}</div>
       <div style="flex:1;">
         <div class="resource-title">${r.title}</div>
         <div class="resource-desc">${r.desc}</div>
