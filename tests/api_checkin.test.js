@@ -107,6 +107,33 @@ async function run() {
     assert.strictEqual(res.body.action, 'inserted');
   });
 
+  const validRegistration = { hn, deviceToken: token, surgeryDate: '2026-01-01', consent: true, enrollmentCode: 'ABCD-1234' };
+
+  await test('rejects a registration missing an enrollmentCode', async () => {
+    const res = makeRes();
+    const { enrollmentCode, ...noCode } = validRegistration;
+    await handler(makeReq('POST', noCode), res);
+    assert.strictEqual(res.statusCode, 400);
+    assert.match(res.body.error, /enrollmentCode/);
+  });
+
+  await test('forwards the enrollmentCode for a registration and relays the backend verdict', async () => {
+    let forwardedBody = null;
+    global.fetch = async (url, opts) => { forwardedBody = JSON.parse(opts.body); return { ok: true, text: async () => JSON.stringify({ ok: true, action: 'registered' }) }; };
+    const res = makeRes();
+    await handler(makeReq('POST', validRegistration), res);
+    assert.strictEqual(forwardedBody.enrollmentCode, 'ABCD-1234');
+    assert.strictEqual(res.body.ok, true);
+  });
+
+  await test('relays a registration rejected for an unrecognized hn (no pre-enrollment) as-is', async () => {
+    global.fetch = async () => ({ ok: true, text: async () => JSON.stringify({ ok: false, error: 'hn is not recognized — ask the clinic to enroll you first' }) });
+    const res = makeRes();
+    await handler(makeReq('POST', validRegistration), res);
+    assert.strictEqual(res.body.ok, false);
+    assert.match(res.body.error, /not recognized/);
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }

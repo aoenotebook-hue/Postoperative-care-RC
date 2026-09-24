@@ -79,7 +79,7 @@ module.exports = async function handler(req, res) {
   }
 
   const { type, hn, deviceToken, surgeryDate, date, submittedAt, phase, painScore,
-          exercisesDoneCount, exercisesTotalCount, exercisesDoneNames, consent } = body;
+          exercisesDoneCount, exercisesTotalCount, exercisesDoneNames, consent, enrollmentCode } = body;
 
   if (!isPlainString(hn, 32) || !HN_PATTERN.test(hn)) {
     res.status(400).json({ ok: false, error: 'invalid hn' });
@@ -105,8 +105,14 @@ module.exports = async function handler(req, res) {
     if (!isPlainString(exercisesDoneNames, 2000)) return res.status(400).json({ ok: false, error: 'invalid exercisesDoneNames' });
     forwardPayload = { type: 'checkin', hn, deviceToken, date, submittedAt, surgeryDate, phase, painScore, exercisesDoneCount, exercisesTotalCount, exercisesDoneNames };
   } else {
-    // Registration (no "type", matching the Apps Script convention).
-    forwardPayload = { hn, deviceToken, surgeryDate, consent: consent === true };
+    // Registration (no "type", matching the Apps Script convention). The
+    // enrollment code is a claim credential the backend checks against a
+    // clinic-provisioned value — it is never trusted as-is, just relayed.
+    if (!isPlainString(enrollmentCode, 32)) {
+      res.status(400).json({ ok: false, error: 'invalid enrollmentCode' });
+      return;
+    }
+    forwardPayload = { hn, deviceToken, surgeryDate, consent: consent === true, enrollmentCode };
   }
 
   forwardPayload = sanitizePayload(forwardPayload);
