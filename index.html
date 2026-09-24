@@ -493,6 +493,7 @@ en: {
   checkinLockedNote:"you can check in again tomorrow",
   checkinSubmittedPrefix:"Submitted today at ",
   checkinNotSubmitted:"Not yet submitted today",
+  checkinNotSyncedNote:"(Saved on this phone — not yet sent to your care team. It will send automatically.)",
   checkinValidation:"Please select a pain level before submitting.",
   checkinPrivacyNote:"Your responses help your care team follow your recovery.",
   surgeonLabel:"Your surgeon",
@@ -519,7 +520,7 @@ en: {
   dateRangeValidation:"Please double-check the date — it looks too far in the past or future. Check the year.",
   hnRequiredValidation:"Please enter your Hospital Number (HN) to continue.",
   enrollRequiredValidation:"Please enter the enrollment code your clinic gave you.",
-  enrollRejectedValidation:"That code didn't match — please check it and try again, or contact your clinic.",
+  enrollRejectedValidation:"We couldn't verify your HN and code — please check both and try again, or contact your clinic.",
   enrollNetworkNote:"Couldn't verify your code right now — you can keep using the app offline; it will finish setting up once you're back online.",
   addHomeTitle:"Add to Home Screen?",
   addHomeBody:"Add this app to your home screen for one-tap access anytime, just like a regular app.",
@@ -725,6 +726,7 @@ th: {
   checkinLockedNote:"พรุ่งนี้สามารถบันทึกได้อีกครั้ง",
   checkinSubmittedPrefix:"ส่งแล้วเมื่อ ",
   checkinNotSubmitted:"ยังไม่ได้ส่งบันทึกวันนี้",
+  checkinNotSyncedNote:"(บันทึกไว้ในเครื่องแล้ว แต่ยังไม่ได้ส่งถึงทีมผู้ดูแล ระบบจะส่งให้อัตโนมัติ)",
   checkinValidation:"กรุณาเลือกระดับความปวดก่อนส่งบันทึก",
   checkinPrivacyNote:"คำตอบของท่านช่วยให้ทีมผู้ดูแลติดตามการฟื้นตัวของท่านได้",
   surgeonLabel:"ศัลยแพทย์ของท่าน",
@@ -751,7 +753,7 @@ th: {
   dateRangeValidation:"กรุณาตรวจสอบวันที่อีกครั้ง — วันที่นี้ห่างจากปัจจุบันมากเกินไป โปรดตรวจสอบปี พ.ศ./ค.ศ. ที่กรอก",
   hnRequiredValidation:"กรุณากรอกหมายเลข HN ของท่านเพื่อดำเนินการต่อ",
   enrollRequiredValidation:"กรุณากรอกรหัสลงทะเบียนที่ได้รับจากคลินิก",
-  enrollRejectedValidation:"รหัสไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง หรือติดต่อคลินิกของท่าน",
+  enrollRejectedValidation:"ไม่สามารถยืนยันหมายเลข HN และรหัสของท่านได้ กรุณาตรวจสอบทั้งสองอย่างอีกครั้ง หรือติดต่อคลินิกของท่าน",
   enrollNetworkNote:"ไม่สามารถตรวจสอบรหัสได้ในขณะนี้ — ท่านยังใช้งานแอปแบบออฟไลน์ได้ตามปกติ และระบบจะตั้งค่าให้เสร็จสมบูรณ์เมื่อกลับมาออนไลน์",
   addHomeTitle:"เพิ่มลงหน้าจอโฮมหรือไม่?",
   addHomeBody:"เพิ่มแอปนี้ลงในหน้าจอโฮมของท่าน เพื่อเข้าใช้งานได้ทันทีเหมือนแอปทั่วไป",
@@ -1245,7 +1247,8 @@ function renderCheckin(){
   if(existing){
     const t = new Date(existing.submittedAt);
     const hh = String(t.getHours()).padStart(2,'0'), mm = String(t.getMinutes()).padStart(2,'0');
-    statusEl.textContent = "✓ " + c.checkinSubmittedPrefix + hh + ":" + mm + " — " + c.checkinLockedNote;
+    statusEl.textContent = "✓ " + c.checkinSubmittedPrefix + hh + ":" + mm + " — " + c.checkinLockedNote
+      + (existing.synced ? "" : " " + c.checkinNotSyncedNote);
     statusEl.className = "checkin-status";
   } else {
     statusEl.textContent = c.checkinNotSubmitted;
@@ -1344,7 +1347,18 @@ async function registerPatient(){
       saveState();
       return 'ok';
     }
-    console.warn('Patient registration rejected by backend:', json && json.error);
+    // A 5xx (backend not configured, Apps Script unreachable) says nothing about
+    // whether the patient's code is right — keep the code and retry later rather
+    // than telling them it's wrong and trapping them on the setup screen.
+    if(res.status >= 500 || !json){
+      console.warn('Patient registration deferred, backend unavailable:', json && json.error);
+      return 'network-error';
+    }
+    console.warn('Patient registration rejected by backend:', json.error);
+    // Drop the rejected code so the next launch asks the patient for it again
+    // instead of retrying a known-bad code in the background forever.
+    STATE.pendingEnrollmentCode = null;
+    saveState();
     return 'rejected';
   }catch(err){
     console.warn('Patient registration failed, will retry next app load:', err);
@@ -1356,7 +1370,13 @@ async function syncOneCheckin(dateKey){
   const entry = STATE.checkins[dateKey];
   if(!entry || entry.synced) return;
   if(!CHECKIN_API_URL) return;
-  if(!STATE.registered) await registerPatient();
+  if(!STATE.registered){
+    // Nothing to register with yet — the setup screen will ask for the clinic's
+    // code (see init); the record stays queued until then.
+    if(!STATE.pendingEnrollmentCode) return;
+    await registerPatient();
+    if(!STATE.registered) return;
+  }
   try{
     const res = await fetch(CHECKIN_API_URL, {
       method:'POST',
@@ -1390,11 +1410,14 @@ async function syncOneCheckin(dateKey){
 }
 
 async function trySyncPendingCheckins(){
+  let attempted = false;
   for(const dateKey in STATE.checkins){
     if(!STATE.checkins[dateKey].synced){
       await syncOneCheckin(dateKey);
+      attempted = true;
     }
   }
+  if(attempted) renderCheckin(); // clear or keep the "not yet sent" note to match reality
 }
 
 /* ============================= RENDER: CARE ============================= */
@@ -1705,6 +1728,7 @@ async function saveOnboard(){
       document.getElementById('enrollment-validation').textContent = c.enrollNetworkNote;
       // proceed anyway — the app stays usable offline; registration retries automatically later
     }
+    if(result === 'ok') trySyncPendingCheckins(); // send anything queued while unregistered
   }
 
   closeOnboard();
@@ -1728,7 +1752,14 @@ function renderAll(){
 (async function init(){
   await loadState();
   renderAll();
-  if(!STATE.surgeryDate){ openOnboard(false); }
+  if(!STATE.surgeryDate){
+    openOnboard(false);
+  } else if(STATE.consentGiven && !STATE.registered && !STATE.pendingEnrollmentCode){
+    // Set up before enrollment codes existed (or their code was rejected):
+    // nothing they check in can reach the care team until this device is
+    // registered, so ask for the clinic's code instead of failing silently.
+    openOnboard(true);
+  }
   trySyncPendingCheckins(); // retry any check-ins that failed to send last session
 
   // Offline support + a real "Add to Home Screen" install prompt.
