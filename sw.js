@@ -4,7 +4,13 @@
    pages and content are always fetched from the network first and the cache is
    only a fallback — never a source of stale instructions while online. */
 
-const CACHE = 'shouldercare-v1';
+// Cache keys are process-wide within an origin (the Cache Storage API has no
+// per-app or per-path scoping), so if this app ever ends up sharing an origin
+// with another app, a version-bump cleanup that isn't scoped to this app's own
+// prefix would delete that other app's offline cache too. Every key this
+// service worker creates or removes MUST start with CACHE_PREFIX.
+const CACHE_PREFIX = 'shouldercare-';
+const CACHE = CACHE_PREFIX + 'v1';
 const CORE = ['./', './index.html', './manifest.json', './images/icon-192.png', './images/icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -19,7 +25,9 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(
+        keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE).map(k => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });

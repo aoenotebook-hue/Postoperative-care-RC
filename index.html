@@ -927,7 +927,7 @@ th: {
 };
 
 /* ============================= STATE ============================= */
-let STATE = { lang:"th", surgeryDate:null, hn:"", logDate:null, doneIds:[], checkins:{}, consentGiven:false, homeScreenPromptShown:false };
+let STATE = { lang:"th", surgeryDate:null, hn:"", logDate:null, doneIds:[], checkins:{}, consentGiven:false, homeScreenPromptShown:false, deviceToken:null, registered:false };
 let currentExPhase = null; // resolved to the patient's current phase on first render
 let selectedPain = null;
 
@@ -960,10 +960,41 @@ async function loadState(){
     }
   }catch(e){ /* no saved state yet, or storage unavailable (private browsing) */ }
   checkDayRollover();
+  pruneOldCheckins();
 }
 
 async function saveState(){
   try{ localStorage.setItem('shouldercare-app-state', JSON.stringify(STATE)); }catch(e){ console.error('save failed', e); }
+}
+
+// Minimize on-device retention: a synced check-in has already reached the care team's
+// record, so keep it locally only long enough to be useful for the patient's own view.
+function pruneOldCheckins(){
+  const cutoff = Date.now() - CHECKIN_RETENTION_DAYS * 86400000;
+  let changed = false;
+  for(const dateKey in STATE.checkins){
+    const entry = STATE.checkins[dateKey];
+    const entryTime = new Date(dateKey + 'T00:00:00').getTime();
+    if(entry.synced && !isNaN(entryTime) && entryTime < cutoff){
+      delete STATE.checkins[dateKey];
+      changed = true;
+    }
+  }
+  if(changed) saveState();
+}
+
+// A random per-device identifier, generated once and never displayed or logged.
+// Paired with the patient's HN, it lets the backend recognize "this is the same
+// device that registered this HN" without the app needing any login system —
+// see apps-script/README.md for how the backend enforces this.
+function getDeviceToken(){
+  if(!STATE.deviceToken){
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    STATE.deviceToken = Array.from(bytes, b => b.toString(16).padStart(2,'0')).join('');
+    saveState();
+  }
+  return STATE.deviceToken;
 }
 
 function handleResetApp(){
@@ -1021,12 +1052,12 @@ function setLang(lang){
 const POSTOP_BOUNDS = [ [1,42], [43,84], [85,180], [181,365] ];
 const RING_MAX_DAY = 365; // ring fills fully across the full 1-year postop timeline
 const CLINIC_PHONE = "02 839 6000";
-// Google Apps Script Web App URL — see setup instructions provided separately.
-// Until this is replaced with a real deployed URL, check-ins are still saved on-device but not sent anywhere.
-const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbx6u2Mrkw6P_7mIzBoV4BQC9hgqkoM2gb17xiCPsaGaba-Y0Wf-y6A__YsUireUgmSQ/exec";
-// Must exactly match SHARED_SECRET in the Apps Script backend — a basic filter against
-// automated spam, not a substitute for keeping the Google Sheet itself private.
-const SUBMIT_SECRET = "5ef8f79a53529281d70262072ec2cc0441adea7e8d5d9d91";
+// Same-origin proxy (api/checkin.js) — see apps-script/README.md for backend setup.
+// The real Apps Script URL and shared token live server-side as Vercel env vars,
+// never in this file, so nothing secret ships to the browser.
+const CHECKIN_API_URL = "./api/checkin";
+// How long a check-in is kept locally before it's pruned from device storage (minimize retention).
+const CHECKIN_RETENTION_DAYS = 400; // covers the full ~1-year recovery timeline with margin
 
 /* ============================= ADD TO HOME SCREEN ============================= */
 let deferredInstallPrompt = null;
@@ -1240,43 +1271,84 @@ async function handleSubmitCheckin(){
   const doneToday = exList.filter(e=>doneSet.has(e.id));
 
   const payload = {
+    type: 'checkin',
     date: todayISO(),
     submittedAt: new Date().toISOString(),
     hn: STATE.hn || "",
+    deviceToken: getDeviceToken(),
     surgeryDate: STATE.surgeryDate || "",
     phase: c.phaseNames[phaseIdx] + " - " + c.phaseTitles[phaseIdx],
     painScore: selectedPain,
     exercisesDoneCount: doneToday.length,
     exercisesTotalCount: exList.length,
     exercisesDoneNames: doneToday.map(e=>e.name).join("; "),
-    secret: SUBMIT_SECRET,
   };
 
-  // The secret only belongs in the outgoing request, not in on-device storage.
-  const { secret, ...stored } = payload;
-  STATE.checkins[payload.date] = Object.assign(stored, { synced:false });
+  // The device token authenticates the outgoing request; it doesn't need to be
+  // duplicated in the locally-stored copy of this check-in.
+  const { deviceToken, ...stored } = payload;
+  STATE.checkins[payload.date] = Object.assign(stored, { synced:false, syncFailed:false });
   saveState();
   renderCheckin();
 
   await syncOneCheckin(payload.date);
+  renderCheckin();
+}
+
+// Registers this device's token against the patient's HN with the backend, so later
+// check-ins from this same device can be recognized without the app needing a login
+// system. Safe to call repeatedly — the backend only binds a token the first time it
+// sees a given HN, and re-registration is a harmless no-op after that.
+async function registerPatient(){
+  if(!CHECKIN_API_URL) return;
+  try{
+    const res = await fetch(CHECKIN_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type: undefined, // registration — matches the backend's "no type" convention
+        hn: STATE.hn || "",
+        deviceToken: getDeviceToken(),
+        surgeryDate: STATE.surgeryDate || "",
+        consent: true,
+      })
+    });
+    const json = await res.json().catch(() => null);
+    STATE.registered = !!(res.ok && json && json.ok);
+    saveState();
+  }catch(err){
+    console.warn('Patient registration failed, will retry next app load:', err);
+  }
 }
 
 async function syncOneCheckin(dateKey){
   const entry = STATE.checkins[dateKey];
   if(!entry || entry.synced) return;
-  if(!SHEET_WEBHOOK_URL || SHEET_WEBHOOK_URL.indexOf("PASTE_YOUR") === 0){
-    return; // backend not configured yet — entry stays saved locally
-  }
+  if(!CHECKIN_API_URL) return;
+  if(!STATE.registered) await registerPatient();
   try{
-    await fetch(SHEET_WEBHOOK_URL, {
+    const res = await fetch(CHECKIN_API_URL, {
       method:'POST',
-      mode:'no-cors', // Apps Script web apps don't return CORS headers; response is opaque
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify(Object.assign({}, entry, { secret: SUBMIT_SECRET }))
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(Object.assign({}, entry, { hn: STATE.hn || "", deviceToken: getDeviceToken() }))
     });
-    entry.synced = true; // optimistic — no-cors means we can't read a real success response
+    const json = await res.json().catch(() => null);
+    // Only ever mark a record synced once the backend has confirmed it actually
+    // persisted the row — an HTTP error, a rejected token, or an unreadable
+    // response all leave the record pending so the next sync attempt retries it.
+    // Resubmitting is safe: the backend dedupes/merges by (hn, date), so retries
+    // never create a duplicate row.
+    if(res.ok && json && json.ok === true){
+      entry.synced = true;
+      entry.syncFailed = false;
+    } else {
+      entry.syncFailed = true;
+      console.warn('Check-in sync rejected by backend:', json && json.error);
+    }
     saveState();
   }catch(err){
+    entry.syncFailed = true;
+    saveState();
     console.warn('Check-in sync failed, will retry next app load:', err);
   }
 }
@@ -1548,11 +1620,14 @@ function saveOnboard(){
     document.getElementById('consent-validation').textContent = c.consentValidation;
     return;
   }
+  const newHn = document.getElementById('input-hn').value.trim();
+  if(newHn !== STATE.hn) STATE.registered = false; // a changed HN needs its own registration
   STATE.consentGiven = true;
   STATE.surgeryDate = d || STATE.surgeryDate;
-  STATE.hn = document.getElementById('input-hn').value.trim();
+  STATE.hn = newHn;
   currentExPhase = null; // re-sync exercise tab to the (possibly new) current phase
   saveState();
+  registerPatient(); // fire-and-forget; syncOneCheckin() will retry registration too if this fails
   closeOnboard();
   maybeShowAddHomePrompt();
 }
