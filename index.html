@@ -438,6 +438,13 @@
       <label data-t="onboardHNLabel">Hospital Number (HN)</label>
       <input type="text" id="input-hn" placeholder="HN-000000">
       <div class="hint" data-t="onboardHNHint">Helps hospital staff find your records quickly.</div>
+      <div class="checkin-validation" id="hn-validation"></div>
+    </div>
+    <div class="field" id="enrollment-block">
+      <label data-t="onboardEnrollLabel">Enrollment Code</label>
+      <input type="text" id="input-enrollment-code" placeholder="e.g. 4F7K-9QX2" autocapitalize="characters">
+      <div class="hint" data-t="onboardEnrollHint">Given to you by the clinic — needed once, the first time you set up the app on this device.</div>
+      <div class="checkin-validation" id="enrollment-validation"></div>
     </div>
     <div class="field consent-block" id="consent-block">
       <div class="consent-title" data-t="consentTitle">Your Privacy</div>
@@ -502,12 +509,18 @@ en: {
   onboardDateLabel:"Date of your shoulder surgery",
   onboardHNLabel:"Hospital Number (HN)",
   onboardHNHint:"Helps hospital staff find your records quickly.",
+  onboardEnrollLabel:"Enrollment Code",
+  onboardEnrollHint:"Given to you by the clinic — needed once, the first time you set up the app on this device.",
   consentTitle:"Your Privacy",
   consentText:"By continuing, you agree that your HN, surgery date, pain scores, and exercise progress will be recorded and shared with your care team to support your recovery, in line with Thailand's Personal Data Protection Act (PDPA).",
   consentCheckboxLabel:"I have read and agree to the above.",
   consentValidation:"Please confirm to continue.",
   dateRequiredValidation:"Please enter your surgery date to continue.",
   dateRangeValidation:"Please double-check the date — it looks too far in the past or future. Check the year.",
+  hnRequiredValidation:"Please enter your Hospital Number (HN) to continue.",
+  enrollRequiredValidation:"Please enter the enrollment code your clinic gave you.",
+  enrollRejectedValidation:"That code didn't match — please check it and try again, or contact your clinic.",
+  enrollNetworkNote:"Couldn't verify your code right now — you can keep using the app offline; it will finish setting up once you're back online.",
   addHomeTitle:"Add to Home Screen?",
   addHomeBody:"Add this app to your home screen for one-tap access anytime, just like a regular app.",
   addHomeAccept:"Add to Home Screen",
@@ -728,12 +741,18 @@ th: {
   onboardDateLabel:"วันที่ท่านผ่าตัดหัวไหล่",
   onboardHNLabel:"หมายเลขประจำตัวผู้ป่วย (HN)",
   onboardHNHint:"ช่วยให้เจ้าหน้าที่โรงพยาบาลค้นหาประวัติของท่านได้รวดเร็วขึ้น",
+  onboardEnrollLabel:"รหัสลงทะเบียน",
+  onboardEnrollHint:"รหัสนี้ได้รับจากคลินิก — กรอกเพียงครั้งเดียวตอนตั้งค่าแอปครั้งแรกบนอุปกรณ์นี้",
   consentTitle:"ความเป็นส่วนตัวของท่าน",
   consentText:"การกดดำเนินการต่อ ถือว่าท่านยินยอมให้บันทึกและส่งข้อมูลหมายเลข HN วันที่ผ่าตัด ระดับความปวด และความคืบหน้าการทำท่าบริหารของท่าน ให้แก่ทีมผู้ดูแลเพื่อใช้ติดตามการฟื้นตัวของท่าน ทั้งนี้เป็นไปตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)",
   consentCheckboxLabel:"ข้าพเจ้าได้อ่านและยินยอมตามข้อความข้างต้น",
   consentValidation:"กรุณายืนยันเพื่อดำเนินการต่อ",
   dateRequiredValidation:"กรุณาระบุวันที่ผ่าตัดเพื่อดำเนินการต่อ",
   dateRangeValidation:"กรุณาตรวจสอบวันที่อีกครั้ง — วันที่นี้ห่างจากปัจจุบันมากเกินไป โปรดตรวจสอบปี พ.ศ./ค.ศ. ที่กรอก",
+  hnRequiredValidation:"กรุณากรอกหมายเลข HN ของท่านเพื่อดำเนินการต่อ",
+  enrollRequiredValidation:"กรุณากรอกรหัสลงทะเบียนที่ได้รับจากคลินิก",
+  enrollRejectedValidation:"รหัสไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง หรือติดต่อคลินิกของท่าน",
+  enrollNetworkNote:"ไม่สามารถตรวจสอบรหัสได้ในขณะนี้ — ท่านยังใช้งานแอปแบบออฟไลน์ได้ตามปกติ และระบบจะตั้งค่าให้เสร็จสมบูรณ์เมื่อกลับมาออนไลน์",
   addHomeTitle:"เพิ่มลงหน้าจอโฮมหรือไม่?",
   addHomeBody:"เพิ่มแอปนี้ลงในหน้าจอโฮมของท่าน เพื่อเข้าใช้งานได้ทันทีเหมือนแอปทั่วไป",
   addHomeAccept:"เพิ่มลงหน้าจอโฮม",
@@ -927,7 +946,7 @@ th: {
 };
 
 /* ============================= STATE ============================= */
-let STATE = { lang:"th", surgeryDate:null, hn:"", logDate:null, doneIds:[], checkins:{}, consentGiven:false, homeScreenPromptShown:false };
+let STATE = { lang:"th", surgeryDate:null, hn:"", logDate:null, doneIds:[], checkins:{}, consentGiven:false, homeScreenPromptShown:false, deviceToken:null, registered:false, pendingEnrollmentCode:null };
 let currentExPhase = null; // resolved to the patient's current phase on first render
 let selectedPain = null;
 
@@ -960,10 +979,41 @@ async function loadState(){
     }
   }catch(e){ /* no saved state yet, or storage unavailable (private browsing) */ }
   checkDayRollover();
+  pruneOldCheckins();
 }
 
 async function saveState(){
   try{ localStorage.setItem('shouldercare-app-state', JSON.stringify(STATE)); }catch(e){ console.error('save failed', e); }
+}
+
+// Minimize on-device retention: a synced check-in has already reached the care team's
+// record, so keep it locally only long enough to be useful for the patient's own view.
+function pruneOldCheckins(){
+  const cutoff = Date.now() - CHECKIN_RETENTION_DAYS * 86400000;
+  let changed = false;
+  for(const dateKey in STATE.checkins){
+    const entry = STATE.checkins[dateKey];
+    const entryTime = new Date(dateKey + 'T00:00:00').getTime();
+    if(entry.synced && !isNaN(entryTime) && entryTime < cutoff){
+      delete STATE.checkins[dateKey];
+      changed = true;
+    }
+  }
+  if(changed) saveState();
+}
+
+// A random per-device identifier, generated once and never displayed or logged.
+// Paired with the patient's HN, it lets the backend recognize "this is the same
+// device that registered this HN" without the app needing any login system —
+// see apps-script/README.md for how the backend enforces this.
+function getDeviceToken(){
+  if(!STATE.deviceToken){
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    STATE.deviceToken = Array.from(bytes, b => b.toString(16).padStart(2,'0')).join('');
+    saveState();
+  }
+  return STATE.deviceToken;
 }
 
 function handleResetApp(){
@@ -1021,12 +1071,12 @@ function setLang(lang){
 const POSTOP_BOUNDS = [ [1,42], [43,84], [85,180], [181,365] ];
 const RING_MAX_DAY = 365; // ring fills fully across the full 1-year postop timeline
 const CLINIC_PHONE = "02 839 6000";
-// Google Apps Script Web App URL — see setup instructions provided separately.
-// Until this is replaced with a real deployed URL, check-ins are still saved on-device but not sent anywhere.
-const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbx6u2Mrkw6P_7mIzBoV4BQC9hgqkoM2gb17xiCPsaGaba-Y0Wf-y6A__YsUireUgmSQ/exec";
-// Must exactly match SHARED_SECRET in the Apps Script backend — a basic filter against
-// automated spam, not a substitute for keeping the Google Sheet itself private.
-const SUBMIT_SECRET = "5ef8f79a53529281d70262072ec2cc0441adea7e8d5d9d91";
+// Same-origin proxy (api/checkin.js) — see apps-script/README.md for backend setup.
+// The real Apps Script URL and shared token live server-side as Vercel env vars,
+// never in this file, so nothing secret ships to the browser.
+const CHECKIN_API_URL = "./api/checkin";
+// How long a check-in is kept locally before it's pruned from device storage (minimize retention).
+const CHECKIN_RETENTION_DAYS = 400; // covers the full ~1-year recovery timeline with margin
 
 /* ============================= ADD TO HOME SCREEN ============================= */
 let deferredInstallPrompt = null;
@@ -1240,43 +1290,101 @@ async function handleSubmitCheckin(){
   const doneToday = exList.filter(e=>doneSet.has(e.id));
 
   const payload = {
+    type: 'checkin',
     date: todayISO(),
     submittedAt: new Date().toISOString(),
     hn: STATE.hn || "",
+    deviceToken: getDeviceToken(),
     surgeryDate: STATE.surgeryDate || "",
     phase: c.phaseNames[phaseIdx] + " - " + c.phaseTitles[phaseIdx],
     painScore: selectedPain,
     exercisesDoneCount: doneToday.length,
     exercisesTotalCount: exList.length,
     exercisesDoneNames: doneToday.map(e=>e.name).join("; "),
-    secret: SUBMIT_SECRET,
   };
 
-  // The secret only belongs in the outgoing request, not in on-device storage.
-  const { secret, ...stored } = payload;
-  STATE.checkins[payload.date] = Object.assign(stored, { synced:false });
+  // The device token authenticates the outgoing request; it doesn't need to be
+  // duplicated in the locally-stored copy of this check-in.
+  const { deviceToken, ...stored } = payload;
+  STATE.checkins[payload.date] = Object.assign(stored, { synced:false, syncFailed:false });
   saveState();
   renderCheckin();
 
   await syncOneCheckin(payload.date);
+  renderCheckin();
+}
+
+// Registers this device's token against the patient's HN with the backend, so later
+// check-ins from this same device can be recognized without the app needing a login
+// system. The backend only binds a token to an HN that a clinic staff member has
+// pre-enrolled with a matching one-time code (STATE.pendingEnrollmentCode) — an HN
+// with no such code, or the wrong code, is rejected, so knowing/guessing an HN is
+// never enough on its own to claim it.
+// Returns 'ok', 'rejected' (bad code / hn already claimed elsewhere — the caller
+// should let the patient fix it), or 'network-error' (safe to retry later).
+async function registerPatient(){
+  if(!CHECKIN_API_URL) return 'network-error';
+  try{
+    const res = await fetch(CHECKIN_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type: undefined, // registration — matches the backend's "no type" convention
+        hn: STATE.hn || "",
+        deviceToken: getDeviceToken(),
+        enrollmentCode: STATE.pendingEnrollmentCode || "",
+        surgeryDate: STATE.surgeryDate || "",
+        consent: true,
+      })
+    });
+    const json = await res.json().catch(() => null);
+    if(res.ok && json && json.ok){
+      STATE.registered = true;
+      STATE.pendingEnrollmentCode = null; // consumed — no need to keep it on-device
+      saveState();
+      return 'ok';
+    }
+    console.warn('Patient registration rejected by backend:', json && json.error);
+    return 'rejected';
+  }catch(err){
+    console.warn('Patient registration failed, will retry next app load:', err);
+    return 'network-error';
+  }
 }
 
 async function syncOneCheckin(dateKey){
   const entry = STATE.checkins[dateKey];
   if(!entry || entry.synced) return;
-  if(!SHEET_WEBHOOK_URL || SHEET_WEBHOOK_URL.indexOf("PASTE_YOUR") === 0){
-    return; // backend not configured yet — entry stays saved locally
-  }
+  if(!CHECKIN_API_URL) return;
+  if(!STATE.registered) await registerPatient();
   try{
-    await fetch(SHEET_WEBHOOK_URL, {
+    const res = await fetch(CHECKIN_API_URL, {
       method:'POST',
-      mode:'no-cors', // Apps Script web apps don't return CORS headers; response is opaque
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify(Object.assign({}, entry, { secret: SUBMIT_SECRET }))
+      headers:{'Content-Type':'application/json'},
+      // Force type explicitly rather than trusting the stored entry's own field:
+      // a record queued by a pre-upgrade version of this app has no "type" at
+      // all, and without this override it would be misrouted to the
+      // registration handler, which could report success without ever writing
+      // a CheckIns row.
+      body: JSON.stringify(Object.assign({}, entry, { type:'checkin', hn: STATE.hn || "", deviceToken: getDeviceToken() }))
     });
-    entry.synced = true; // optimistic — no-cors means we can't read a real success response
+    const json = await res.json().catch(() => null);
+    // Only ever mark a record synced once the backend has confirmed it actually
+    // persisted the row — an HTTP error, a rejected token, or an unreadable
+    // response all leave the record pending so the next sync attempt retries it.
+    // Resubmitting is safe: the backend dedupes/merges by (hn, date), so retries
+    // never create a duplicate row.
+    if(res.ok && json && json.ok === true){
+      entry.synced = true;
+      entry.syncFailed = false;
+    } else {
+      entry.syncFailed = true;
+      console.warn('Check-in sync rejected by backend:', json && json.error);
+    }
     saveState();
   }catch(err){
+    entry.syncFailed = true;
+    saveState();
     console.warn('Check-in sync failed, will retry next app load:', err);
   }
 }
@@ -1519,16 +1627,25 @@ function openOnboard(prefill){
   const consentBlock = document.getElementById('consent-block');
   consentBlock.style.display = STATE.consentGiven ? 'none' : 'block';
   document.getElementById('input-consent').checked = false;
+  // The enrollment code is a one-time claim credential: once this device is
+  // registered, later edits (e.g. correcting the surgery date) don't need it again.
+  const enrollBlock = document.getElementById('enrollment-block');
+  enrollBlock.style.display = STATE.registered ? 'none' : 'block';
+  document.getElementById('input-enrollment-code').value = '';
+  document.getElementById('hn-validation').textContent = '';
+  document.getElementById('enrollment-validation').textContent = '';
   document.getElementById('consent-validation').textContent = '';
   document.getElementById('date-validation').textContent = '';
   document.getElementById('onboard').classList.remove('hidden');
 }
 function closeOnboard(){ document.getElementById('onboard').classList.add('hidden'); renderAll(); }
-function saveOnboard(){
+async function saveOnboard(){
   const c = CONTENT[STATE.lang];
   const d = document.getElementById('input-surgery-date').value;
   document.getElementById('date-validation').textContent = '';
   document.getElementById('consent-validation').textContent = '';
+  document.getElementById('hn-validation').textContent = '';
+  document.getElementById('enrollment-validation').textContent = '';
 
   if(!d && !STATE.surgeryDate){
     document.getElementById('date-validation').textContent = c.dateRequiredValidation;
@@ -1548,11 +1665,48 @@ function saveOnboard(){
     document.getElementById('consent-validation').textContent = c.consentValidation;
     return;
   }
+  const newHn = document.getElementById('input-hn').value.trim();
+  if(!newHn){
+    document.getElementById('hn-validation').textContent = c.hnRequiredValidation;
+    return;
+  }
+  const hnChanged = newHn !== STATE.hn;
+  if(hnChanged) STATE.registered = false; // a changed HN needs its own registration
+
+  const needsEnrollment = !STATE.registered;
+  let enrollmentCode = '';
+  if(needsEnrollment){
+    enrollmentCode = document.getElementById('input-enrollment-code').value.trim();
+    if(!enrollmentCode){
+      document.getElementById('enrollment-validation').textContent = c.enrollRequiredValidation;
+      return;
+    }
+  }
+
   STATE.consentGiven = true;
   STATE.surgeryDate = d || STATE.surgeryDate;
-  STATE.hn = document.getElementById('input-hn').value.trim();
+  STATE.hn = newHn;
+  if(needsEnrollment) STATE.pendingEnrollmentCode = enrollmentCode;
   currentExPhase = null; // re-sync exercise tab to the (possibly new) current phase
   saveState();
+
+  if(needsEnrollment){
+    const btn = document.querySelector('#onboard .primary-btn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    const result = await registerPatient();
+    btn.disabled = false;
+    btn.textContent = originalText;
+    if(result === 'rejected'){
+      document.getElementById('enrollment-validation').textContent = c.enrollRejectedValidation;
+      return; // keep the modal open so the patient can correct the code
+    }
+    if(result === 'network-error'){
+      document.getElementById('enrollment-validation').textContent = c.enrollNetworkNote;
+      // proceed anyway — the app stays usable offline; registration retries automatically later
+    }
+  }
+
   closeOnboard();
   maybeShowAddHomePrompt();
 }
