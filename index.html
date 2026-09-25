@@ -1366,6 +1366,14 @@ async function registerPatient(){
   }
 }
 
+// A code saved earlier (entered while the backend was unreachable) turned out
+// to be wrong: reopen setup with the reason, since the discarded code can't
+// be retried and nothing else would ask the patient for a new one.
+function promptForEnrollmentCode(){
+  if(document.getElementById('onboard').classList.contains('hidden')) openOnboard(true);
+  document.getElementById('enrollment-validation').textContent = CONTENT[STATE.lang].enrollRejectedValidation;
+}
+
 async function syncOneCheckin(dateKey){
   const entry = STATE.checkins[dateKey];
   if(!entry || entry.synced) return;
@@ -1374,7 +1382,7 @@ async function syncOneCheckin(dateKey){
     // Nothing to register with yet — the setup screen will ask for the clinic's
     // code (see init); the record stays queued until then.
     if(!STATE.pendingEnrollmentCode) return;
-    await registerPatient();
+    if(await registerPatient() === 'rejected') promptForEnrollmentCode();
     if(!STATE.registered) return;
   }
   try{
@@ -1754,11 +1762,13 @@ function renderAll(){
   renderAll();
   if(!STATE.surgeryDate){
     openOnboard(false);
-  } else if(STATE.consentGiven && !STATE.registered && !STATE.pendingEnrollmentCode){
-    // Set up before enrollment codes existed (or their code was rejected):
-    // nothing they check in can reach the care team until this device is
-    // registered, so ask for the clinic's code instead of failing silently.
-    openOnboard(true);
+  } else if(STATE.consentGiven && !STATE.registered){
+    // Nothing this device checks in can reach the care team until it's
+    // registered. Retry a code saved while offline first, and ask for one
+    // if there isn't one (set up before enrollment codes existed) or the
+    // backend turns it down — never leave the patient silently unregistered.
+    if(!STATE.pendingEnrollmentCode) openOnboard(true);
+    else if(await registerPatient() === 'rejected') promptForEnrollmentCode();
   }
   trySyncPendingCheckins(); // retry any check-ins that failed to send last session
 
