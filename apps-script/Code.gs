@@ -39,7 +39,7 @@
  * apps-script/README.md.
  */
 
-var SCRIPT_VERSION = '2026-09-25b';
+var SCRIPT_VERSION = '2026-09-26';
 var SHARED_TOKEN = 'REPLACE_WITH_A_LONG_RANDOM_VALUE_THEN_SET_THE_SAME_VALUE_AS_APPS_SCRIPT_TOKEN_IN_VERCEL';
 
 var MAX_REQUESTS_PER_HN_PER_HOUR = 30; // generous for real use, low enough to blunt a scripted flood
@@ -47,6 +47,14 @@ var MAX_REQUESTS_PER_HN_PER_HOUR = 30; // generous for real use, low enough to b
 var REGISTRATION_COLUMNS = ['hn', 'deviceId', 'surgeryDate', 'consent', 'firstSeenAt', 'lastSeenAt'];
 var CHECKIN_COLUMNS = ['hn', 'date', 'submittedAt', 'surgeryDate', 'phase', 'painScore',
   'exercisesDoneCount', 'exercisesTotalCount', 'exercisesDoneNames', 'deviceId', 'multipleDevices', 'receivedAt'];
+// UCLA shoulder rating scale, asked at 2, 6, 12 and 24 weeks after surgery.
+// Items not asked at that time point (active lifting and strength while the
+// repair is still protected) are left blank and count as 0 in the total.
+var UCLA_COLUMNS = ['hn', 'timepointWeek', 'date', 'submittedAt', 'surgeryDate', 'daysPostOp',
+  'pain', 'function', 'forwardFlexion', 'strength', 'satisfaction', 'total', 'grade', 'itemsAnswered',
+  'flexionNote', 'deviceId', 'multipleDevices', 'receivedAt'];
+var UCLA_TIMEPOINTS = [2, 6, 12, 24];
+var MULTI_DEVICE_FLAG = 'YES — check with patient';
 
 function jsonReply(payload) {
   payload.version = SCRIPT_VERSION;
@@ -97,6 +105,7 @@ function doPost(e) {
     lock.waitLock(10000);
     try {
       if (payload.type === 'checkin') return jsonReply(handleCheckin(payload));
+      if (payload.type === 'ucla') return jsonReply(handleUcla(payload));
       return jsonReply(handleRegistration(payload));
     } finally {
       lock.releaseLock();
@@ -192,7 +201,7 @@ function sanitizeForSheet(value) {
 
 function rowFor(columns, values) {
   return columns.map(function (col) {
-    return sanitizeForSheet(values[col] === undefined ? '' : values[col]);
+    return sanitizeForSheet(values[col] === undefined || values[col] === null ? '' : values[col]);
   });
 }
 
@@ -219,7 +228,7 @@ function recordDevice(payload, deviceId) {
   };
   if (existingRow >= 0) {
     // Keep the consent/surgery date from registration if a check-in doesn't carry them.
-    if (payload.type === 'checkin') values.consent = data[existingRow][REGISTRATION_COLUMNS.indexOf('consent')];
+    if (payload.type) values.consent = data[existingRow][REGISTRATION_COLUMNS.indexOf('consent')];
     sheet.getRange(existingRow + 1, 1, 1, REGISTRATION_COLUMNS.length).setValues([rowFor(REGISTRATION_COLUMNS, values)]);
     return { devices: devices, isNew: false };
   }
@@ -253,7 +262,7 @@ function handleCheckin(payload) {
   var values = {};
   columns.forEach(function (col) { values[col] = payload[col]; });
   values.deviceId = deviceId;
-  values.multipleDevices = reg.devices > 1 ? 'YES — check with patient' : '';
+  values.multipleDevices = reg.devices > 1 ? MULTI_DEVICE_FLAG : '';
   values.receivedAt = new Date();
 
   for (var i = 1; i < data.length; i++) {
@@ -269,22 +278,90 @@ function handleCheckin(payload) {
   return { ok: true, action: 'inserted', row: sheet.getLastRow() };
 }
 
-/** Marks every existing check-in for this HN once a second device appears. */
-function markMultipleDevices(hn) {
-  var sheet = ensureSheet('CheckIns', CHECKIN_COLUMNS);
-  var data = sheet.getDataRange().getValues();
-  var hnCol = CHECKIN_COLUMNS.indexOf('hn');
-  var flagCol = CHECKIN_COLUMNS.indexOf('multipleDevices');
-  for (var r = 1; r < data.length; r++) {
-    if (cellToString(data[r][hnCol]) === cellToString(hn) && cellToString(data[r][flagCol]) === '') {
-      sheet.getRange(r + 1, flagCol + 1).setValue('YES — check with patient');
-    }
+var UCLA_ALLOWED = {
+  pain: [1, 2, 4, 6, 8, 10],
+  'function': [1, 2, 4, 6, 8, 10],
+  forwardFlexion: [0, 1, 2, 3, 4, 5],
+  strength: [0, 1, 2, 3, 4, 5],
+  satisfaction: [0, 5]
+};
+
+/** Ellman's grading of the UCLA score for rotator cuff repair. */
+function uclaGrade(total) {
+  if (total >= 34) return 'excellent';
+  if (total >= 29) return 'good';
+  if (total >= 21) return 'fair';
+  return 'poor';
+}
+
+function handleUcla(payload) {
+  var week = Number(payload.timepointWeek);
+  if (UCLA_TIMEPOINTS.indexOf(week) === -1) return { ok: false, error: 'invalid timepointWeek' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cellToString(payload.date))) return { ok: false, error: 'invalid date' };
+
+  // Score here rather than trusting a total sent by the phone.
+  var total = 0, answered = 0;
+  var items = Object.keys(UCLA_ALLOWED);
+  for (var k = 0; k < items.length; k++) {
+    var v = payload[items[k]];
+    if (v === null || v === undefined || v === '') continue;
+    if (UCLA_ALLOWED[items[k]].indexOf(v) === -1) return { ok: false, error: 'invalid ' + items[k] };
+    total += v;
+    answered++;
   }
+  if (payload.pain == null || payload['function'] == null || payload.satisfaction == null) {
+    return { ok: false, error: 'pain, function and satisfaction are required' };
+  }
+
+  var deviceId = deviceIdFor(payload.deviceToken);
+  var reg = recordDevice(payload, deviceId);
+  if (reg.devices > 1) markMultipleDevices(payload.hn);
+
+  var sheet = ensureSheet('UCLA', UCLA_COLUMNS);
+  var columns = UCLA_COLUMNS;
+  var values = {};
+  columns.forEach(function (col) { values[col] = payload[col]; });
+  values.timepointWeek = week;
+  values.total = total;
+  values.grade = answered === items.length ? uclaGrade(total) : ''; // a grade only means something for the full scale
+  values.itemsAnswered = answered + ' of ' + items.length;
+  values.deviceId = deviceId;
+  values.multipleDevices = reg.devices > 1 ? MULTI_DEVICE_FLAG : '';
+  values.receivedAt = new Date();
+
+  var data = sheet.getDataRange().getValues();
+  var hnCol = columns.indexOf('hn'), weekCol = columns.indexOf('timepointWeek'), devCol = columns.indexOf('deviceId');
+  for (var i = 1; i < data.length; i++) {
+    if (cellToString(data[i][hnCol]) !== cellToString(payload.hn)) continue;
+    if (Number(data[i][weekCol]) !== week) continue;
+    if (cellToString(data[i][devCol]) !== deviceId) continue;
+    // Same patient, same time point, same phone — a retry: overwrite, don't append.
+    sheet.getRange(i + 1, 1, 1, columns.length).setValues([rowFor(columns, values)]);
+    return { ok: true, action: 'merged', row: i + 1, total: total };
+  }
+  sheet.appendRow(rowFor(columns, values));
+  return { ok: true, action: 'inserted', row: sheet.getLastRow(), total: total };
+}
+
+/** Marks every existing check-in and questionnaire for this HN once a second device appears. */
+function markMultipleDevices(hn) {
+  [['CheckIns', CHECKIN_COLUMNS], ['UCLA', UCLA_COLUMNS]].forEach(function (tab) {
+    var sheet = ensureSheet(tab[0], tab[1]);
+    var data = sheet.getDataRange().getValues();
+    var hnCol = tab[1].indexOf('hn');
+    var flagCol = tab[1].indexOf('multipleDevices');
+    for (var r = 1; r < data.length; r++) {
+      if (cellToString(data[r][hnCol]) === cellToString(hn) && cellToString(data[r][flagCol]) === '') {
+        sheet.getRange(r + 1, flagCol + 1).setValue(MULTI_DEVICE_FLAG);
+      }
+    }
+  });
 }
 
 /** Run this once from the editor to create the tabs and confirm access. */
 function setUpSheets() {
   ensureSheet('Registrations', REGISTRATION_COLUMNS);
   ensureSheet('CheckIns', CHECKIN_COLUMNS);
-  return 'Created/verified: Registrations, CheckIns';
+  ensureSheet('UCLA', UCLA_COLUMNS);
+  return 'Created/verified: Registrations, CheckIns, UCLA';
 }

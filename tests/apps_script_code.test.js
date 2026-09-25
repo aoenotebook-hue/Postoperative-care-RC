@@ -246,5 +246,61 @@ test('rows left unflagged by an interrupted earlier request are flagged on the n
   assert.ok(tab(sb, 'CheckIns').slice(1).every(r => /YES/.test(r[flagCol])));
 });
 
+function ucla(sb, hn, device, week, extra) {
+  return post(sb, Object.assign({
+    token: TOKEN, type: 'ucla', hn, deviceToken: device, timepointWeek: week, date: '2026-02-01', submittedAt: 't',
+    surgeryDate: '2026-01-01', daysPostOp: week * 7,
+    pain: 4, 'function': 4, forwardFlexion: null, strength: null, satisfaction: 5, flexionNote: '',
+  }, extra || {}));
+}
+function ucol(sb, name) { return sb.UCLA_COLUMNS.indexOf(name); }
+
+test('a week-2 UCLA questionnaire is saved with unasked items blank and scored by the backend', () => {
+  const sb = freshSandbox();
+  const res = ucla(sb, '1234567', PHONE_A, 2, { total: 35 }); // a total sent by the phone is ignored
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.total, 13);
+  const row = tab(sb, 'UCLA')[1];
+  assert.strictEqual(row[ucol(sb, 'total')], 13);
+  assert.strictEqual(row[ucol(sb, 'forwardFlexion')], '');
+  assert.strictEqual(row[ucol(sb, 'grade')], '', 'no grade for a partial scale');
+  assert.strictEqual(row[ucol(sb, 'itemsAnswered')], '3 of 5');
+});
+
+test('a full week-12 UCLA questionnaire gets the Ellman grade', () => {
+  const sb = freshSandbox();
+  const res = ucla(sb, '1234567', PHONE_A, 12, { pain: 8, 'function': 8, forwardFlexion: 5, strength: 4, satisfaction: 5 });
+  assert.strictEqual(res.total, 30);
+  const row = tab(sb, 'UCLA')[1];
+  assert.strictEqual(row[ucol(sb, 'grade')], 'good');
+  assert.strictEqual(row[ucol(sb, 'itemsAnswered')], '5 of 5');
+});
+
+test('a resent UCLA questionnaire merges into one row per HN + week + phone', () => {
+  const sb = freshSandbox();
+  ucla(sb, '1234567', PHONE_A, 6);
+  const retry = ucla(sb, '1234567', PHONE_A, 6, { pain: 6 });
+  assert.strictEqual(retry.action, 'merged');
+  ucla(sb, '1234567', PHONE_A, 12);
+  assert.strictEqual(tab(sb, 'UCLA').length, 3, 'header + week 6 + week 12');
+  assert.strictEqual(tab(sb, 'UCLA')[1][ucol(sb, 'pain')], 6);
+});
+
+test('UCLA answers outside the scale, or a wrong week, are refused', () => {
+  const sb = freshSandbox();
+  assert.strictEqual(ucla(sb, '1234567', PHONE_A, 3).ok, false);
+  assert.match(ucla(sb, '1234567', PHONE_A, 2, { pain: 5 }).error, /pain/);
+  assert.match(ucla(sb, '1234567', PHONE_A, 2, { satisfaction: 3 }).error, /satisfaction/);
+  assert.strictEqual(ucla(sb, '1234567', PHONE_A, 2, { pain: null }).ok, false);
+  assert.strictEqual(tab(sb, 'UCLA'), undefined, 'nothing written');
+});
+
+test('UCLA rows are flagged too when an HN is used from a second phone', () => {
+  const sb = freshSandbox();
+  ucla(sb, '1234567', PHONE_A, 2);
+  checkin(sb, '1234567', PHONE_B);
+  assert.match(tab(sb, 'UCLA')[1][ucol(sb, 'multipleDevices')], /YES/);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -140,6 +140,40 @@ async function run() {
     assert.strictEqual(called, false);
   });
 
+  const validUcla = {
+    type: 'ucla', hn, deviceToken: token, date: '2026-01-15', submittedAt: '2026-01-15T00:00:00Z', surgeryDate: '2026-01-01',
+    timepointWeek: 2, daysPostOp: 14, pain: 4, function: 6, forwardFlexion: null, strength: null, satisfaction: 5,
+    flexionNote: 'not asked (arm still protected)', total: 15, synced: false,
+  };
+
+  await test('forwards a UCLA questionnaire with only its own fields', async () => {
+    let forwardedBody = null;
+    global.fetch = async (url, opts) => { forwardedBody = JSON.parse(opts.body); return { ok: true, text: async () => JSON.stringify({ ok: true, action: 'inserted' }) }; };
+    const res = makeRes();
+    await handler(makeReq('POST', validUcla), res);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(forwardedBody.type, 'ucla');
+    assert.strictEqual(forwardedBody.pain, 4);
+    assert.strictEqual(forwardedBody.forwardFlexion, null);
+    assert.strictEqual(forwardedBody.total, undefined, 'the backend computes the total itself');
+    assert.strictEqual(forwardedBody.synced, undefined);
+  });
+
+  await test('rejects a UCLA questionnaire for a week that is not 2, 6, 12 or 24', async () => {
+    let called = false;
+    global.fetch = async () => { called = true; };
+    const res = makeRes();
+    await handler(makeReq('POST', Object.assign({}, validUcla, { timepointWeek: 4 })), res);
+    assert.strictEqual(res.statusCode, 400);
+    assert.strictEqual(called, false);
+  });
+
+  await test('rejects a non-numeric UCLA answer', async () => {
+    const res = makeRes();
+    await handler(makeReq('POST', Object.assign({}, validUcla, { pain: '=1+1' })), res);
+    assert.strictEqual(res.statusCode, 400);
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }

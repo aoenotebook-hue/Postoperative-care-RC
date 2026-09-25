@@ -117,6 +117,25 @@ module.exports = async function handler(req, res) {
     if (typeof exercisesTotalCount !== 'number' || exercisesTotalCount < 0) return res.status(400).json({ ok: false, error: 'invalid exercisesTotalCount' });
     if (!isPlainString(exercisesDoneNames, 2000)) return res.status(400).json({ ok: false, error: 'invalid exercisesDoneNames' });
     forwardPayload = { type: 'checkin', hn, deviceToken, date, submittedAt, surgeryDate, phase, painScore, exercisesDoneCount, exercisesTotalCount, exercisesDoneNames };
+  } else if (type === 'ucla') {
+    // UCLA shoulder questionnaire. Code.gs checks each answer and computes the total itself.
+    const b = body;
+    if (![2, 6, 12, 24].includes(b.timepointWeek)) return res.status(400).json({ ok: false, error: 'invalid timepointWeek' });
+    if (!DATE_PATTERN.test(date || '')) return res.status(400).json({ ok: false, error: 'invalid date' });
+    if (!isPlainString(submittedAt, 40)) return res.status(400).json({ ok: false, error: 'invalid submittedAt' });
+    if (typeof b.daysPostOp !== 'number' || b.daysPostOp < 0 || b.daysPostOp > 1000) return res.status(400).json({ ok: false, error: 'invalid daysPostOp' });
+    for (const item of ['pain', 'function', 'forwardFlexion', 'strength', 'satisfaction']) {
+      const v = b[item];
+      if (v !== null && (typeof v !== 'number' || !Number.isInteger(v) || v < 0 || v > 10)) {
+        return res.status(400).json({ ok: false, error: 'invalid ' + item });
+      }
+    }
+    if (b.flexionNote !== undefined && !isPlainString(b.flexionNote, 120)) return res.status(400).json({ ok: false, error: 'invalid flexionNote' });
+    forwardPayload = {
+      type: 'ucla', hn, deviceToken, date, submittedAt, surgeryDate, timepointWeek: b.timepointWeek, daysPostOp: b.daysPostOp,
+      pain: b.pain, function: b.function, forwardFlexion: b.forwardFlexion, strength: b.strength,
+      satisfaction: b.satisfaction, flexionNote: b.flexionNote || '',
+    };
   } else {
     // Registration (no "type", matching the Apps Script convention).
     forwardPayload = { hn, deviceToken, surgeryDate, consent: consent === true };
