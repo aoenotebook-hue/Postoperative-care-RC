@@ -6,10 +6,11 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const crypto = require('crypto');
 const assert = require('assert');
 
-function makeFakeSpreadsheet() {
-  const sheets = {}; // name -> array of rows (row 0 = header)
+function makeFakeSpreadsheet(initial) {
+  const sheets = initial || {}; // name -> array of rows (row 0 = header)
   return {
     getSheets: () => Object.keys(sheets).map(name => ({ getName: () => name })),
     getSheetByName: (name) => sheets[name] ? makeSheetHandle(name) : null,
@@ -21,12 +22,12 @@ function makeFakeSpreadsheet() {
     return {
       appendRow: (row) => { sheets[name].push(row.slice()); },
       setFrozenRows: () => {},
+      clear: () => { sheets[name].length = 0; },
       getDataRange: () => ({ getValues: () => sheets[name].map(r => r.slice()) }),
       getLastRow: () => sheets[name].length,
-      getRange: (row1, col1, numRows, numCols) => ({
+      getRange: (row1, col1, numRows) => ({
         setValues: (values) => {
-          const rowIdx = row1 - 1;
-          for (let i = 0; i < numRows; i++) sheets[name][rowIdx + i] = values[i].slice();
+          for (let i = 0; i < numRows; i++) sheets[name][row1 - 1 + i] = values[i].slice();
         },
         setValue: (v) => { sheets[name][row1 - 1][col1 - 1] = v; },
       }),
@@ -34,24 +35,14 @@ function makeFakeSpreadsheet() {
   }
 }
 
-function loadCodeGs(fakeSpreadsheet, cacheStore) {
+function loadCodeGs(fakeSpreadsheet) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
-  const alerts = [];
+  const cacheStore = {};
   const sandbox = {
-    SpreadsheetApp: {
-      getActiveSpreadsheet: () => fakeSpreadsheet,
-      getUi: () => ({
-        prompt: () => ({ getSelectedButton: () => 'OK', getResponseText: () => '' }),
-        alert: (msg) => { alerts.push(msg); },
-        Button: { OK: 'OK' },
-      }),
-    },
+    SpreadsheetApp: { getActiveSpreadsheet: () => fakeSpreadsheet },
     ContentService: {
       MimeType: { JSON: 'JSON' },
-      createTextOutput: (text) => ({
-        _text: text,
-        setMimeType: function () { return this; },
-      }),
+      createTextOutput: (text) => ({ _text: text, setMimeType: function () { return this; } }),
     },
     CacheService: {
       getScriptCache: () => ({
@@ -59,198 +50,176 @@ function loadCodeGs(fakeSpreadsheet, cacheStore) {
         put: (k, v) => { cacheStore[k] = v; },
       }),
     },
-    Utilities: { formatDate: (d) => d.toISOString().slice(0, 10) },
+    LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
+    Utilities: {
+      formatDate: (d) => d.toISOString().slice(0, 10),
+      DigestAlgorithm: { SHA_256: 'sha256' },
+      // Apps Script returns signed bytes (-128..127); mimic that exactly.
+      computeDigest: (alg, value) => Array.from(crypto.createHash(alg).update(value).digest()).map(b => (b > 127 ? b - 256 : b)),
+    },
     Session: { getScriptTimeZone: () => 'UTC' },
-    Math, // preRegisterPatient/resetDeviceToken generate a random code with Math.random
     console,
   };
   vm.createContext(sandbox);
   vm.runInContext(src, sandbox, { filename: 'Code.gs' });
-  sandbox._alerts = alerts;
   return sandbox;
 }
 
-function post(sandbox, payloadObj) {
-  const result = sandbox.doPost({ postData: { contents: JSON.stringify(payloadObj) } });
-  return JSON.parse(result._text);
+const TOKEN = 'test-shared-token';
+const PHONE_A = 'a'.repeat(64);
+const PHONE_B = 'b'.repeat(64);
+
+function freshSandbox(initialSheets) {
+  const sb = loadCodeGs(makeFakeSpreadsheet(initialSheets));
+  sb.SHARED_TOKEN = TOKEN;
+  return sb;
+}
+function post(sb, payload) {
+  return JSON.parse(sb.doPost({ postData: { contents: JSON.stringify(payload) } })._text);
+}
+function register(sb, hn, device) {
+  return post(sb, { token: TOKEN, hn, deviceToken: device, surgeryDate: '2026-01-01', consent: true });
+}
+function checkin(sb, hn, device, date, extra) {
+  return post(sb, Object.assign({
+    token: TOKEN, type: 'checkin', hn, deviceToken: device, date: date || '2026-01-05', submittedAt: 't',
+    surgeryDate: '2026-01-01', phase: 'p', painScore: 3, exercisesDoneCount: 1, exercisesTotalCount: 2, exercisesDoneNames: 'x',
+  }, extra || {}));
+}
+function tab(sb, name) { return sb.SpreadsheetApp.getActiveSpreadsheet()._sheets[name]; }
+function col(sb, name) { return sb.CHECKIN_COLUMNS.indexOf(name); }
+
+let passed = 0, failed = 0;
+function test(name, fn) {
+  try { fn(); console.log('  ok  -', name); passed++; }
+  catch (e) { console.log('  FAIL -', name, '\n       ', e.message); failed++; }
 }
 
-function run() {
-  let passed = 0, failed = 0;
-  function test(name, fn) {
-    try { fn(); console.log('  ok  -', name); passed++; }
-    catch (e) { console.log('  FAIL -', name, '\n       ', e.message); failed++; }
-  }
+console.log('Backend logic tests (against real Code.gs, stubbed Apps Script services)\n');
 
-  const TOKEN = 'test-shared-token';
+test('rejects requests with the wrong shared token', () => {
+  const res = post(freshSandbox(), { token: 'wrong', hn: 'HN1', deviceToken: PHONE_A });
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error, /invalid token/);
+});
 
-  function freshSandbox() {
-    const cache = {};
-    const sb = loadCodeGs(makeFakeSpreadsheet(), cache);
-    sb.SHARED_TOKEN = TOKEN;
-    return sb;
-  }
+test('rejects an invalid hn', () => {
+  const res = register(freshSandbox(), '<script>', PHONE_A);
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error, /hn/);
+});
 
-  // Simulates a clinic staff member enrolling a patient BEFORE they ever open
-  // the app, and returns the code that would be handed to that patient.
-  function enroll(sb, hn) {
-    return sb.preRegisterPatient(hn);
-  }
+test('rejects a malformed deviceToken', () => {
+  const res = register(freshSandbox(), '1234567', 'not-hex');
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error, /deviceToken/);
+});
 
-  function register(sb, hn, deviceToken, code) {
-    return post(sb, { token: TOKEN, hn, deviceToken, enrollmentCode: code || '', surgeryDate: '2026-01-01', consent: true });
-  }
+test('any patient with an HN can register — no pre-enrollment or code needed', () => {
+  const sb = freshSandbox();
+  const res = register(sb, '1234567', PHONE_A);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.action, 'registered');
+  assert.strictEqual(tab(sb, 'Registrations').length, 2);
+});
 
-  function checkin(sb, hn, deviceToken, date) {
-    return post(sb, { token: TOKEN, type: 'checkin', hn, deviceToken, date: date || '2026-01-05', submittedAt: 't', surgeryDate: '2026-01-01', phase: 'p', painScore: 3, exercisesDoneCount: 1, exercisesTotalCount: 2, exercisesDoneNames: 'x' });
-  }
+test('re-registering from the same phone updates instead of duplicating', () => {
+  const sb = freshSandbox();
+  register(sb, '1234567', PHONE_A);
+  const res = register(sb, '1234567', PHONE_A);
+  assert.strictEqual(res.action, 'updated');
+  assert.strictEqual(res.devices, 1);
+  assert.strictEqual(tab(sb, 'Registrations').length, 2);
+});
 
-  console.log('Backend logic tests (against real Code.gs, stubbed Apps Script services)\n');
+test('a check-in is accepted even if the registration request never arrived', () => {
+  const sb = freshSandbox();
+  const res = checkin(sb, '1234567', PHONE_A);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.action, 'inserted');
+  assert.strictEqual(tab(sb, 'Registrations').length, 2, 'the phone should be recorded too');
+});
 
-  test('rejects requests with the wrong shared token', () => {
-    const sb = freshSandbox();
-    const res = post(sb, { token: 'wrong', hn: 'HN1', deviceToken: 'a'.repeat(32) });
-    assert.strictEqual(res.ok, false);
-    assert.match(res.error, /invalid token/);
-  });
+test('a retry from the same phone for the same day merges into one row', () => {
+  const sb = freshSandbox();
+  const first = checkin(sb, '1234567', PHONE_A);
+  const retry = checkin(sb, '1234567', PHONE_A);
+  assert.strictEqual(retry.action, 'merged');
+  assert.strictEqual(retry.row, first.row);
+  assert.strictEqual(tab(sb, 'CheckIns').length, 2, 'header + exactly one data row');
+});
 
-  test('rejects an invalid hn', () => {
-    const sb = freshSandbox();
-    const res = post(sb, { token: TOKEN, hn: '<script>', deviceToken: 'a'.repeat(32) });
-    assert.strictEqual(res.ok, false);
-    assert.match(res.error, /hn/);
-  });
+test('a new phone for the same HN is accepted — nobody gets locked out', () => {
+  const sb = freshSandbox();
+  register(sb, '1234567', PHONE_A);
+  const res = register(sb, '1234567', PHONE_B);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.devices, 2);
+});
 
-  test('rejects a malformed deviceToken', () => {
-    const sb = freshSandbox();
-    const res = post(sb, { token: TOKEN, hn: 'HN1', deviceToken: 'not-hex' });
-    assert.strictEqual(res.ok, false);
-    assert.match(res.error, /deviceToken/);
-  });
+test('a second phone can never overwrite the first phone\'s check-in for the same day', () => {
+  const sb = freshSandbox();
+  checkin(sb, '1234567', PHONE_A, '2026-01-05', { painScore: 3 });
+  const other = checkin(sb, '1234567', PHONE_B, '2026-01-05', { painScore: 0 });
+  assert.strictEqual(other.action, 'inserted');
+  const rows = tab(sb, 'CheckIns').slice(1);
+  assert.strictEqual(rows.length, 2);
+  assert.deepStrictEqual(rows.map(r => r[col(sb, 'painScore')]).sort(), [0, 3]);
+});
 
-  // --- the core fix for the hijacking finding ---
+test('once an HN is used from a second phone, all its rows are flagged for staff', () => {
+  const sb = freshSandbox();
+  checkin(sb, '1234567', PHONE_A, '2026-01-04');
+  checkin(sb, '7654321', PHONE_A, '2026-01-04'); // different patient, must stay unflagged
+  assert.strictEqual(tab(sb, 'CheckIns')[1][col(sb, 'multipleDevices')], '');
+  checkin(sb, '1234567', PHONE_B, '2026-01-05');
+  const rows = tab(sb, 'CheckIns').slice(1);
+  const flag = (hn) => rows.filter(r => r[0] === hn).map(r => r[col(sb, 'multipleDevices')]);
+  assert.ok(flag('1234567').every(f => /YES/.test(f)), 'both rows for the shared HN are flagged');
+  assert.deepStrictEqual(flag('7654321'), ['']);
+});
 
-  test('SECURITY: registering an hn nobody at the clinic pre-enrolled is rejected outright — knowing/guessing an hn claims nothing', () => {
-    const sb = freshSandbox();
-    const attacker = register(sb, 'HN-NEVER-ENROLLED', 'a'.repeat(32), 'anything');
-    assert.strictEqual(attacker.ok, false);
-    assert.match(attacker.error, /not recognized/);
-  });
+test('the full device token is never written to the sheet', () => {
+  const sb = freshSandbox();
+  checkin(sb, '1234567', PHONE_A);
+  const everything = JSON.stringify(sb.SpreadsheetApp.getActiveSpreadsheet()._sheets);
+  assert.ok(!everything.includes(PHONE_A));
+  const deviceId = tab(sb, 'CheckIns')[1][col(sb, 'deviceId')];
+  assert.match(deviceId, /^[0-9a-f]{12}$/);
+});
 
-  test('SECURITY: an attacker who knows a real (but not-yet-claimed) hn cannot register it without the enrollment code', () => {
-    const sb = freshSandbox();
-    enroll(sb, 'HN1'); // clinic pre-enrolls the real patient's hn
-    const attacker = register(sb, 'HN1', 'c'.repeat(32), 'GUESSED-CODE');
-    assert.strictEqual(attacker.ok, false);
-    assert.match(attacker.error, /invalid enrollment code/);
-    // and the real patient can still claim it afterwards with the real code:
-    const code = sb.SpreadsheetApp.getActiveSpreadsheet()._sheets['Registrations'][1][1];
-    const patient = register(sb, 'HN1', 'a'.repeat(32), code);
-    assert.strictEqual(patient.ok, true);
-  });
+test('a formula-like value is neutralized before it reaches the sheet', () => {
+  const sb = freshSandbox();
+  checkin(sb, '1234567', PHONE_A, '2026-01-05', { exercisesDoneNames: '=HYPERLINK("http://evil")' });
+  assert.strictEqual(String(tab(sb, 'CheckIns')[1][col(sb, 'exercisesDoneNames')]).charAt(0), "'");
+});
 
-  test('the clinic-issued code claims the pre-enrolled hn and binds this device', () => {
-    const sb = freshSandbox();
-    const code = enroll(sb, 'HN1');
-    const res = register(sb, 'HN1', 'a'.repeat(32), code);
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.action, 'registered');
-  });
+test('rate limiting kicks in after MAX_REQUESTS_PER_HN_PER_HOUR requests', () => {
+  const sb = freshSandbox();
+  sb.MAX_REQUESTS_PER_HN_PER_HOUR = 3;
+  checkin(sb, '1234567', PHONE_A, '2026-02-01');
+  checkin(sb, '1234567', PHONE_A, '2026-02-02');
+  checkin(sb, '1234567', PHONE_A, '2026-02-03');
+  const fourth = checkin(sb, '1234567', PHONE_A, '2026-02-04');
+  assert.strictEqual(fourth.ok, false);
+  assert.match(fourth.error, /rate limited/);
+});
 
-  test('a checkin before registration is rejected (hn alone is not enough)', () => {
-    const sb = freshSandbox();
-    enroll(sb, 'HN1');
-    const res = checkin(sb, 'HN1', 'a'.repeat(32));
-    assert.strictEqual(res.ok, false);
-    assert.match(res.error, /not registered/);
-  });
+test('an empty tab left by the previous version gets the new column headings', () => {
+  const sb = freshSandbox({ Registrations: [['hn', 'enrollmentCode', 'deviceToken', 'surgeryDate', 'consent', 'registeredAt']] });
+  const res = register(sb, '1234567', PHONE_A);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(JSON.stringify(tab(sb, 'Registrations')[0]), JSON.stringify(sb.REGISTRATION_COLUMNS));
+});
 
-  test('unauthorized patient id: checkin with a different device token than the bound one is rejected', () => {
-    const sb = freshSandbox();
-    const code = enroll(sb, 'HN1');
-    register(sb, 'HN1', 'a'.repeat(32), code);
-    const attacker = checkin(sb, 'HN1', 'b'.repeat(32));
-    assert.strictEqual(attacker.ok, false);
-    assert.match(attacker.error, /device token does not match/);
-  });
+test('a tab holding data under different headings is refused, not written into', () => {
+  const old = [['Received At', 'Date', 'HN'], ['x', '2026-01-01', '1717']];
+  const sb = freshSandbox({ CheckIns: old.map(r => r.slice()) });
+  const res = checkin(sb, '1234567', PHONE_A);
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error, /different column headings/);
+  assert.deepStrictEqual(tab(sb, 'CheckIns'), old, 'existing data must be untouched');
+});
 
-  test('a second registration attempt for the same hn from a different device (even with the right code) is rejected once claimed', () => {
-    const sb = freshSandbox();
-    const code = enroll(sb, 'HN1');
-    register(sb, 'HN1', 'a'.repeat(32), code);
-    const hijack = register(sb, 'HN1', 'b'.repeat(32), code);
-    assert.strictEqual(hijack.ok, false);
-    assert.match(hijack.error, /already registered to a different device/);
-  });
-
-  test('legitimate checkin from the registered device succeeds', () => {
-    const sb = freshSandbox();
-    const code = enroll(sb, 'HN1');
-    register(sb, 'HN1', 'a'.repeat(32), code);
-    const res = checkin(sb, 'HN1', 'a'.repeat(32));
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.action, 'inserted');
-  });
-
-  test('the same already-bound device can re-register (e.g. edited surgery date) without re-entering the code', () => {
-    const sb = freshSandbox();
-    const code = enroll(sb, 'HN1');
-    register(sb, 'HN1', 'a'.repeat(32), code);
-    const res = register(sb, 'HN1', 'a'.repeat(32), 'wrong-or-blank-code-should-not-matter-now');
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.action, 'updated');
-  });
-
-  test('duplicate retry of the same checkin merges into the same row instead of duplicating', () => {
-    const sb = freshSandbox();
-    const code = enroll(sb, 'HN1');
-    register(sb, 'HN1', 'a'.repeat(32), code);
-    const first = checkin(sb, 'HN1', 'a'.repeat(32), '2026-01-05');
-    const retry = checkin(sb, 'HN1', 'a'.repeat(32), '2026-01-05'); // simulates a client retry
-    assert.strictEqual(first.action, 'inserted');
-    assert.strictEqual(retry.action, 'merged');
-    assert.strictEqual(retry.row, first.row); // same row, not a new one
-    const checkinRows = sb.SpreadsheetApp.getActiveSpreadsheet()._sheets['CheckIns'];
-    assert.strictEqual(checkinRows.length, 2, 'header + exactly one data row, no duplicate');
-  });
-
-  test('after device reset, the old enrollment code stops working and a fresh one is required', () => {
-    const sb = freshSandbox();
-    const oldCode = enroll(sb, 'HN1');
-    register(sb, 'HN1', 'a'.repeat(32), oldCode);
-    sb.resetDeviceToken('HN1');
-
-    const withOldCode = register(sb, 'HN1', 'b'.repeat(32), oldCode);
-    assert.strictEqual(withOldCode.ok, false, 'the old code must be invalidated by a reset');
-
-    const newCode = sb.SpreadsheetApp.getActiveSpreadsheet()._sheets['Registrations'][1][1];
-    assert.notStrictEqual(newCode, oldCode);
-    const withNewCode = register(sb, 'HN1', 'b'.repeat(32), newCode);
-    assert.strictEqual(withNewCode.ok, true);
-  });
-
-  test('a formula-like value is neutralized before it reaches the sheet', () => {
-    const sb = freshSandbox();
-    const evil = '=HYPERLINK("http://evil")';
-    assert.strictEqual(sb.sanitizeForSheet(evil).charAt(0), "'");
-    assert.strictEqual(sb.sanitizeForSheet('normal text'), 'normal text');
-  });
-
-  test('rate limiting kicks in after MAX_CHECKINS_PER_HN_PER_HOUR requests', () => {
-    const sb = freshSandbox();
-    sb.MAX_CHECKINS_PER_HN_PER_HOUR = 3;
-    const code = enroll(sb, 'HN1');
-    register(sb, 'HN1', 'a'.repeat(32), code);
-    checkin(sb, 'HN1', 'a'.repeat(32), '2026-02-01');
-    checkin(sb, 'HN1', 'a'.repeat(32), '2026-02-02');
-    checkin(sb, 'HN1', 'a'.repeat(32), '2026-02-03');
-    const fourth = checkin(sb, 'HN1', 'a'.repeat(32), '2026-02-04');
-    assert.strictEqual(fourth.ok, false);
-    assert.match(fourth.error, /rate limited/);
-  });
-
-  console.log(`\n${passed} passed, ${failed} failed`);
-  if (failed > 0) process.exit(1);
-}
-
-run();
+console.log(`\n${passed} passed, ${failed} failed`);
+if (failed > 0) process.exit(1);
