@@ -18,16 +18,28 @@
 //   APPS_SCRIPT_URL    the deployed Apps Script Web App's /exec URL
 //   APPS_SCRIPT_TOKEN  must exactly match SHARED_TOKEN in apps-script/Code.gs
 //
-// This file only validates shape/size and forwards the request. Real
-// per-patient authorization (does this deviceToken actually belong to this
-// HN?) is enforced by the Apps Script backend itself, which is the only
-// place that can check that against stored state — see Code.gs.
+// This file only validates shape/size and forwards the request. Any patient
+// can register by HN; how rows are kept apart per device, and how an HN used
+// from several phones is flagged, is handled in Code.gs.
 
 const MAX_BODY_BYTES = 8 * 1024; // a check-in/registration payload is a few hundred bytes; refuse anything absurd
 const MAX_STRING_LEN = 500;
-const HN_PATTERN = /^[A-Za-z0-9\-/ ]{0,32}$/;
+const HN_PATTERN = /^[A-Za-z0-9\-/ ]{1,32}$/;
 const TOKEN_PATTERN = /^[0-9a-f]{16,128}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// Same rules as normalizeHn() in index.html and Code.gs: "HN 1234567",
+// "hn:1234567" and Thai digits all become "1234567", so an older or
+// hand-built client can't split one patient across two HN spellings.
+function normalizeHn(raw) {
+  if (typeof raw !== 'string') return raw;
+  return raw
+    .replace(/[๐-๙]/g, (d) => String('๐๑๒๓๔๕๖๗๘๙'.indexOf(d)))
+    .trim()
+    .replace(/^HN\s*[:.\-#]?\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
+}
 
 function isPlainString(v, maxLen) {
   return typeof v === 'string' && v.length <= (maxLen || MAX_STRING_LEN);
@@ -78,8 +90,9 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { type, hn, deviceToken, surgeryDate, date, submittedAt, phase, painScore,
-          exercisesDoneCount, exercisesTotalCount, exercisesDoneNames, consent, enrollmentCode } = body;
+  const hn = normalizeHn(body.hn);
+  const { type, deviceToken, surgeryDate, date, submittedAt, phase, painScore,
+          exercisesDoneCount, exercisesTotalCount, exercisesDoneNames, consent } = body;
 
   if (!isPlainString(hn, 32) || !HN_PATTERN.test(hn)) {
     res.status(400).json({ ok: false, error: 'invalid hn' });
@@ -105,14 +118,8 @@ module.exports = async function handler(req, res) {
     if (!isPlainString(exercisesDoneNames, 2000)) return res.status(400).json({ ok: false, error: 'invalid exercisesDoneNames' });
     forwardPayload = { type: 'checkin', hn, deviceToken, date, submittedAt, surgeryDate, phase, painScore, exercisesDoneCount, exercisesTotalCount, exercisesDoneNames };
   } else {
-    // Registration (no "type", matching the Apps Script convention). The
-    // enrollment code is a claim credential the backend checks against a
-    // clinic-provisioned value — it is never trusted as-is, just relayed.
-    if (!isPlainString(enrollmentCode, 32)) {
-      res.status(400).json({ ok: false, error: 'invalid enrollmentCode' });
-      return;
-    }
-    forwardPayload = { hn, deviceToken, surgeryDate, consent: consent === true, enrollmentCode };
+    // Registration (no "type", matching the Apps Script convention).
+    forwardPayload = { hn, deviceToken, surgeryDate, consent: consent === true };
   }
 
   forwardPayload = sanitizePayload(forwardPayload);
