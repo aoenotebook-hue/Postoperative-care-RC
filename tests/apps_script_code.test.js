@@ -22,6 +22,7 @@ function makeFakeSpreadsheet(initial) {
     return {
       appendRow: (row) => { sheets[name].push(row.slice()); },
       setFrozenRows: () => {},
+      setName: (newName) => { sheets[newName] = sheets[name]; delete sheets[name]; name = newName; },
       clear: () => { sheets[name].length = 0; },
       getDataRange: () => ({ getValues: () => sheets[name].map(r => r.slice()) }),
       getLastRow: () => sheets[name].length,
@@ -212,13 +213,37 @@ test('an empty tab left by the previous version gets the new column headings', (
   assert.strictEqual(JSON.stringify(tab(sb, 'Registrations')[0]), JSON.stringify(sb.REGISTRATION_COLUMNS));
 });
 
-test('a tab holding data under different headings is refused, not written into', () => {
+test('a tab holding data under different headings is moved aside intact and a fresh one started', () => {
   const old = [['Received At', 'Date', 'HN'], ['x', '2026-01-01', '1717']];
-  const sb = freshSandbox({ CheckIns: old.map(r => r.slice()) });
+  const sb = freshSandbox({ CheckIns: old.map(r => r.slice()), 'CheckIns (old)': [['taken']] });
   const res = checkin(sb, '1234567', PHONE_A);
-  assert.strictEqual(res.ok, false);
-  assert.match(res.error, /different column headings/);
-  assert.deepStrictEqual(tab(sb, 'CheckIns'), old, 'existing data must be untouched');
+  assert.strictEqual(res.ok, true, 'the check-in must still be saved');
+  assert.strictEqual(JSON.stringify(tab(sb, 'CheckIns (old) 2')), JSON.stringify(old), 'old data kept, under an unused name');
+  assert.strictEqual(JSON.stringify(tab(sb, 'CheckIns (old)')), JSON.stringify([['taken']]), 'an existing "(old)" tab is not overwritten');
+  assert.strictEqual(JSON.stringify(tab(sb, 'CheckIns')[0]), JSON.stringify(sb.CHECKIN_COLUMNS));
+  assert.strictEqual(tab(sb, 'CheckIns').length, 2);
+});
+
+test('HN spellings sent straight to the backend are normalized to one key', () => {
+  const sb = freshSandbox();
+  checkin(sb, 'HN-000123', PHONE_A, '2026-01-04');
+  const res = checkin(sb, '๐๐๐๑๒๓', PHONE_B, '2026-01-05');
+  assert.strictEqual(res.ok, true);
+  const rows = tab(sb, 'CheckIns').slice(1);
+  assert.deepStrictEqual(rows.map(r => r[0]), ['000123', '000123']);
+  assert.ok(rows.every(r => /YES/.test(r[col(sb, 'multipleDevices')])), 'a second phone under another spelling is still flagged');
+  assert.strictEqual(tab(sb, 'Registrations').length, 3, 'one HN, two phones');
+});
+
+test('rows left unflagged by an interrupted earlier request are flagged on the next request', () => {
+  const sb = freshSandbox();
+  checkin(sb, '1234567', PHONE_A, '2026-01-04');
+  register(sb, '1234567', PHONE_B);
+  // Simulate the flag write having failed after the second phone was recorded.
+  const flagCol = col(sb, 'multipleDevices');
+  tab(sb, 'CheckIns').slice(1).forEach(r => { r[flagCol] = ''; });
+  register(sb, '1234567', PHONE_B); // e.g. the app re-registering at next launch
+  assert.ok(tab(sb, 'CheckIns').slice(1).every(r => /YES/.test(r[flagCol])));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

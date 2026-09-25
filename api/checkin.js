@@ -28,6 +28,19 @@ const HN_PATTERN = /^[A-Za-z0-9\-/ ]{1,32}$/;
 const TOKEN_PATTERN = /^[0-9a-f]{16,128}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+// Same rules as normalizeHn() in index.html and Code.gs: "HN 1234567",
+// "hn:1234567" and Thai digits all become "1234567", so an older or
+// hand-built client can't split one patient across two HN spellings.
+function normalizeHn(raw) {
+  if (typeof raw !== 'string') return raw;
+  return raw
+    .replace(/[๐-๙]/g, (d) => String('๐๑๒๓๔๕๖๗๘๙'.indexOf(d)))
+    .trim()
+    .replace(/^HN\s*[:.\-#]?\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
+}
+
 function isPlainString(v, maxLen) {
   return typeof v === 'string' && v.length <= (maxLen || MAX_STRING_LEN);
 }
@@ -77,7 +90,8 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { type, hn, deviceToken, surgeryDate, date, submittedAt, phase, painScore,
+  const hn = normalizeHn(body.hn);
+  const { type, deviceToken, surgeryDate, date, submittedAt, phase, painScore,
           exercisesDoneCount, exercisesTotalCount, exercisesDoneNames, consent } = body;
 
   if (!isPlainString(hn, 32) || !HN_PATTERN.test(hn)) {

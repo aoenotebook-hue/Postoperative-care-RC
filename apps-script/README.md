@@ -27,8 +27,10 @@ environment variables.
 9. From the Apps Script editor, run `setUpSheets` once (Run menu > select
    the function > Run) to create the `Registrations` and `CheckIns` tabs.
    Tabs left empty by an earlier version get the new column headings
-   automatically; a tab that already holds data under different headings is
-   left alone and reported, so rename it first (e.g. "CheckIns (old)").
+   automatically. A tab that already holds data under different headings is
+   renamed to e.g. "CheckIns (old)" with its data untouched, and a fresh tab
+   is started — nothing is deleted, and check-ins keep flowing even if you
+   skip this step.
 
 ## 2. Configure Vercel
 

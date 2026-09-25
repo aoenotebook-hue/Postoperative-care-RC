@@ -21,7 +21,7 @@ async function run() {
     catch (e) { console.log('  FAIL -', name, '\n       ', e.stack || e.message); failed++; }
   }
 
-  const hn = 'HN1', token = 'a'.repeat(32);
+  const hn = '1234567', token = 'a'.repeat(32);
   const validCheckin = {
     type: 'checkin', hn, deviceToken: token, date: '2026-01-05', submittedAt: '2026-01-05T00:00:00Z',
     surgeryDate: '2026-01-01', phase: 'Phase 1', painScore: 3,
@@ -118,6 +118,17 @@ async function run() {
     assert.strictEqual(forwardedBody.hn, hn);
     assert.strictEqual(forwardedBody.type, undefined);
     assert.strictEqual(forwardedBody.token, 'server-only-secret');
+  });
+
+  await test('forwards a loosely typed HN in its standard form', async () => {
+    let forwardedBody = null;
+    global.fetch = async (url, opts) => { forwardedBody = JSON.parse(opts.body); return { ok: true, text: async () => JSON.stringify({ ok: true }) }; };
+    const res = makeRes();
+    await handler(makeReq('POST', Object.assign({}, validCheckin, { hn: 'HN-1234567' })), res);
+    assert.strictEqual(res.body.ok, true);
+    assert.strictEqual(forwardedBody.hn, '1234567');
+    await handler(makeReq('POST', Object.assign({}, validCheckin, { hn: ' hn: ๑๒๓๔๕๖๗ ' })), makeRes());
+    assert.strictEqual(forwardedBody.hn, '1234567');
   });
 
   await test('rejects an empty hn before contacting the backend', async () => {

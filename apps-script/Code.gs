@@ -39,7 +39,7 @@
  * apps-script/README.md.
  */
 
-var SCRIPT_VERSION = '2026-09-25';
+var SCRIPT_VERSION = '2026-09-25b';
 var SHARED_TOKEN = 'REPLACE_WITH_A_LONG_RANDOM_VALUE_THEN_SET_THE_SAME_VALUE_AS_APPS_SCRIPT_TOKEN_IN_VERCEL';
 
 var MAX_REQUESTS_PER_HN_PER_HOUR = 30; // generous for real use, low enough to blunt a scripted flood
@@ -76,6 +76,9 @@ function doPost(e) {
       return jsonReply({ ok: false, error: 'no request body' });
     }
     var payload = JSON.parse(e.postData.contents);
+    // Canonicalize here too, not just in the app: older app versions send the
+    // HN as typed, and one patient must never split into two identities.
+    payload.hn = normalizeHn(payload.hn);
 
     if (payload.token !== SHARED_TOKEN) {
       return jsonReply({ ok: false, error: 'invalid token — the proxy and this script are using different APPS_SCRIPT_TOKEN values' });
@@ -101,6 +104,17 @@ function doPost(e) {
   } catch (err) {
     return jsonReply({ ok: false, error: String(err) });
   }
+}
+
+// Same rules as normalizeHn() in index.html: "HN 1234567", "hn:1234567" and
+// Thai digits all become "1234567".
+function normalizeHn(raw) {
+  return String(raw === undefined || raw === null ? '' : raw)
+    .replace(/[๐-๙]/g, function (d) { return String('๐๑๒๓๔๕๖๗๘๙'.indexOf(d)); })
+    .trim()
+    .replace(/^HN\s*[:.\-#]?\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
 }
 
 function validHn(hn) {
@@ -130,29 +144,37 @@ function rateLimited(hn) {
 
 /**
  * Creates the tab if missing. A tab left over from an earlier version of this
- * script with only its header row gets the current header; one that already
- * holds data under a different header is refused rather than written into
- * with columns in the wrong places.
+ * script is handled without anyone having to touch the Sheet: if it only has
+ * its header row it gets the current header; if it holds data under a
+ * different header, it is renamed "<name> (old)" with its data untouched and a
+ * fresh tab takes its place — never written into with columns in the wrong
+ * places, and never an upload outage while waiting for someone to notice.
  */
 function ensureSheet(name, columns) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.appendRow(columns);
-    sheet.setFrozenRows(1);
-    return sheet;
+  if (sheet) {
+    var data = sheet.getDataRange().getValues();
+    var header = (data[0] || []).map(cellToString);
+    if (header.join('|') === columns.join('|')) return sheet;
+    if (data.length <= 1) {
+      sheet.clear();
+      sheet.appendRow(columns);
+      sheet.setFrozenRows(1);
+      return sheet;
+    }
+    sheet.setName(unusedSheetName(ss, name + ' (old)'));
   }
-  var data = sheet.getDataRange().getValues();
-  var header = (data[0] || []).map(cellToString);
-  if (header.join('|') === columns.join('|')) return sheet;
-  if (data.length <= 1) {
-    sheet.clear();
-    sheet.appendRow(columns);
-    sheet.setFrozenRows(1);
-    return sheet;
-  }
-  throw new Error('The "' + name + '" tab has data under different column headings. Rename it (e.g. "' + name + ' (old)") and try again.');
+  sheet = ss.insertSheet(name);
+  sheet.appendRow(columns);
+  sheet.setFrozenRows(1);
+  return sheet;
+}
+
+function unusedSheetName(ss, base) {
+  var candidate = base;
+  for (var i = 2; ss.getSheetByName(candidate); i++) candidate = base + ' ' + i;
+  return candidate;
 }
 
 function cellToString(value) {
@@ -208,7 +230,9 @@ function recordDevice(payload, deviceId) {
 function handleRegistration(payload) {
   var deviceId = deviceIdFor(payload.deviceToken);
   var result = recordDevice(payload, deviceId);
-  if (result.isNew && result.devices > 1) markMultipleDevices(payload.hn);
+  // Whenever the HN has more than one phone, not only on the request that added
+  // the second one: if flagging failed partway before, a retry must finish it.
+  if (result.devices > 1) markMultipleDevices(payload.hn);
   return { ok: true, action: result.isNew ? 'registered' : 'updated', devices: result.devices };
 }
 
@@ -217,7 +241,7 @@ function handleCheckin(payload) {
   // A check-in also counts as registration, so a phone whose registration
   // request never arrived is still recorded.
   var reg = recordDevice(payload, deviceId);
-  if (reg.isNew && reg.devices > 1) markMultipleDevices(payload.hn);
+  if (reg.devices > 1) markMultipleDevices(payload.hn); // idempotent — see handleRegistration
 
   var sheet = ensureSheet('CheckIns', CHECKIN_COLUMNS);
   var columns = CHECKIN_COLUMNS;
