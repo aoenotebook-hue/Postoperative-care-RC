@@ -25,8 +25,8 @@ environment variables.
    `{"ok":true,"service":"postoperative-care-rc",...}`. If the version doesn't
    match the one in `Code.gs`, step 5 didn't take — redeploy.
 9. From the Apps Script editor, run `setUpSheets` once (Run menu > select
-   the function > Run) to create the `Registrations`, `CheckIns` and `UCLA`
-   tabs. (Skipping this is fine too — each tab is created the first time
+   the function > Run) to create the `Registrations`, `CheckIns`, `UCLA` and
+   `Patient Summary` tabs. (Skipping this is fine too — each tab is created the first time
    something is written to it.)
    Tabs left empty by an earlier version get the new column headings
    automatically. A tab that already holds data under different headings is
@@ -98,9 +98,20 @@ Items not asked are left blank and count as 0. `Code.gs` works out the
 `total` itself (out of 35) rather than trusting the phone. `grade` uses
 Ellman's grading for cuff repair (34–35 excellent, 29–33 good, 21–28 fair,
 0–20 poor) and is filled in only when all five items were answered.
-`itemsAnswered` shows how many were asked, and `flexionNote` records why
-flexion is blank or 0 at weeks 2 and 6. A resend from the same phone updates
+Each score has the patient's answer in words beside it (for example
+`Pain (/10)` = 4, `Pain — answer` = "Little or none at rest; pain with light
+activity"), and items not asked say why. A resend from the same phone updates
 its row (one row per HN + week + phone).
+
+## Patient Summary tab
+
+One row per patient, rewritten each time anything arrives for them: surgery
+date, last check-in, latest pain, average pain over the last 7 check-ins,
+number of check-ins, UCLA totals for weeks 2 / 6 / 12 / 24 side by side, the
+latest grade and the more-than-one-phone flag. It is built from the other
+tabs, so editing it by hand changes nothing (and is overwritten next time).
+After pasting a new `Code.gs`, run `rebuildPatientSummary` once from the
+editor to fill it for patients who sent data earlier.
 
 ## Formula injection
 

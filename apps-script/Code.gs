@@ -39,7 +39,7 @@
  * apps-script/README.md.
  */
 
-var SCRIPT_VERSION = '2026-09-26';
+var SCRIPT_VERSION = '2026-09-26b';
 var SHARED_TOKEN = 'REPLACE_WITH_A_LONG_RANDOM_VALUE_THEN_SET_THE_SAME_VALUE_AS_APPS_SCRIPT_TOKEN_IN_VERCEL';
 
 var MAX_REQUESTS_PER_HN_PER_HOUR = 30; // generous for real use, low enough to blunt a scripted flood
@@ -50,9 +50,49 @@ var CHECKIN_COLUMNS = ['hn', 'date', 'submittedAt', 'surgeryDate', 'phase', 'pai
 // UCLA shoulder rating scale, asked at 2, 6, 12 and 24 weeks after surgery.
 // Items not asked at that time point (active lifting and strength while the
 // repair is still protected) are left blank and count as 0 in the total.
-var UCLA_COLUMNS = ['hn', 'timepointWeek', 'date', 'submittedAt', 'surgeryDate', 'daysPostOp',
-  'pain', 'function', 'forwardFlexion', 'strength', 'satisfaction', 'total', 'grade', 'itemsAnswered',
-  'flexionNote', 'deviceId', 'multipleDevices', 'receivedAt'];
+// Each score sits next to the patient's answer in words, so the tab reads
+// without a scoring key. [internal key, heading shown in the sheet]
+var UCLA_FIELDS = [
+  ['hn', 'HN'], ['timepointWeek', 'Week after surgery'], ['date', 'Date answered'], ['daysPostOp', 'Days after surgery'],
+  ['total', 'UCLA total (/35)'], ['grade', 'Grade'],
+  ['pain', 'Pain (/10)'], ['painAnswer', 'Pain — answer'],
+  ['function', 'Function (/10)'], ['functionAnswer', 'Function — answer'],
+  ['forwardFlexion', 'Lifting arm forward (/5)'], ['forwardFlexionAnswer', 'Lifting arm forward — answer'],
+  ['strength', 'Strength (/5)'], ['strengthAnswer', 'Strength — answer'],
+  ['satisfaction', 'Satisfaction (/5)'], ['satisfactionAnswer', 'Satisfaction — answer'],
+  ['itemsAnswered', 'Questions asked'], ['surgeryDate', 'Surgery date'],
+  ['multipleDevices', 'Used on more than one phone?'], ['deviceId', 'Phone ID'],
+  ['submittedAt', 'Sent from phone at'], ['receivedAt', 'Received at']
+];
+var UCLA_COLUMNS = UCLA_FIELDS.map(function (f) { return f[0]; });
+var UCLA_HEADINGS = UCLA_FIELDS.map(function (f) { return f[1]; });
+
+// What each score means, in the words the patient chose from.
+var UCLA_ANSWERS = {
+  pain: { 1: 'Constant and unbearable; strong painkillers often', 2: 'Constant but bearable; strong painkillers sometimes',
+    4: 'Little or none at rest; pain with light activity', 6: 'Only with heavy or certain activities',
+    8: 'Occasional and slight', 10: 'No pain' },
+  'function': { 1: 'Cannot use the arm', 2: 'Light activities only', 4: 'Light housework and most daily activities',
+    6: 'Most housework, shopping, driving; dresses self', 8: 'Slightly limited; can work above shoulder height',
+    10: 'Normal activities' },
+  forwardFlexion: { 0: 'Hardly at all (under 30°)', 1: 'A little forward (30–45°)', 2: 'Below shoulder height (45–90°)',
+    3: 'Just above shoulder height (90–120°)', 4: 'Above head, not fully up (120–150°)', 5: 'Fully or nearly fully up (over 150°)' },
+  strength: { 0: 'Grade 0 — no muscle contraction', 1: 'Grade 1 — muscle tightens, arm does not move',
+    2: 'Grade 2 — moves only when supported', 3: 'Grade 3 — lifts arm, cannot hold anything',
+    4: 'Grade 4 — lifts and holds light things, weaker than other arm', 5: 'Grade 5 — normal strength' },
+  satisfaction: { 5: 'Satisfied — better', 0: 'Not satisfied — worse' }
+};
+
+// One row per patient, rewritten whenever anything arrives for them.
+var SUMMARY_FIELDS = [
+  ['hn', 'HN'], ['surgeryDate', 'Surgery date'],
+  ['lastCheckin', 'Last check-in'], ['latestPain', 'Latest pain (0–10)'], ['avgPain', 'Average pain, last 7 check-ins'],
+  ['checkinCount', 'Check-ins sent'],
+  ['ucla2', 'UCLA week 2 (/35)'], ['ucla6', 'UCLA week 6 (/35)'], ['ucla12', 'UCLA week 12 (/35)'], ['ucla24', 'UCLA week 24 (/35)'],
+  ['latestGrade', 'Latest UCLA grade'], ['multipleDevices', 'Used on more than one phone?'], ['updatedAt', 'Last updated']
+];
+var SUMMARY_COLUMNS = SUMMARY_FIELDS.map(function (f) { return f[0]; });
+var SUMMARY_HEADINGS = SUMMARY_FIELDS.map(function (f) { return f[1]; });
 var UCLA_TIMEPOINTS = [2, 6, 12, 24];
 var MULTI_DEVICE_FLAG = 'YES — check with patient';
 
@@ -160,6 +200,13 @@ function rateLimited(hn) {
  * places, and never an upload outage while waiting for someone to notice.
  */
 function ensureSheet(name, columns) {
+  var headings = HEADINGS_FOR[name] || columns;
+  return ensureSheetWithHeadings(name, headings);
+}
+
+var HEADINGS_FOR = { 'UCLA': UCLA_HEADINGS, 'Patient Summary': SUMMARY_HEADINGS };
+
+function ensureSheetWithHeadings(name, columns) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(name);
   if (sheet) {
@@ -168,16 +215,22 @@ function ensureSheet(name, columns) {
     if (header.join('|') === columns.join('|')) return sheet;
     if (data.length <= 1) {
       sheet.clear();
-      sheet.appendRow(columns);
-      sheet.setFrozenRows(1);
+      writeHeader(sheet, columns);
       return sheet;
     }
     sheet.setName(unusedSheetName(ss, name + ' (old)'));
   }
   sheet = ss.insertSheet(name);
+  writeHeader(sheet, columns);
+  return sheet;
+}
+
+function writeHeader(sheet, columns) {
   sheet.appendRow(columns);
   sheet.setFrozenRows(1);
-  return sheet;
+  try { // looks only — never let formatting stop a row being saved
+    sheet.getRange(1, 1, 1, columns.length).setFontWeight('bold').setBackground('#E8EEF7').setWrap(true);
+  } catch (err) { /* ignore */ }
 }
 
 function unusedSheetName(ss, base) {
@@ -242,6 +295,7 @@ function handleRegistration(payload) {
   // Whenever the HN has more than one phone, not only on the request that added
   // the second one: if flagging failed partway before, a retry must finish it.
   if (result.devices > 1) markMultipleDevices(payload.hn);
+  updatePatientSummary(payload.hn);
   return { ok: true, action: result.isNew ? 'registered' : 'updated', devices: result.devices };
 }
 
@@ -271,11 +325,14 @@ function handleCheckin(payload) {
     if (cellToString(data[i][devCol]) !== deviceId) continue;
     // Same patient, same day, same phone — a retry: overwrite, don't append.
     sheet.getRange(i + 1, 1, 1, columns.length).setValues([rowFor(columns, values)]);
+    updatePatientSummary(payload.hn);
     return { ok: true, action: 'merged', row: i + 1 };
   }
 
   sheet.appendRow(rowFor(columns, values));
-  return { ok: true, action: 'inserted', row: sheet.getLastRow() };
+  var row = sheet.getLastRow();
+  updatePatientSummary(payload.hn);
+  return { ok: true, action: 'inserted', row: row };
 }
 
 var UCLA_ALLOWED = {
@@ -326,6 +383,15 @@ function handleUcla(payload) {
   values.grade = answered === items.length ? uclaGrade(total) : ''; // a grade only means something for the full scale
   values.itemsAnswered = answered + ' of ' + items.length;
   values.deviceId = deviceId;
+  values.grade = values.grade ? values.grade.charAt(0).toUpperCase() + values.grade.slice(1)
+                              : 'Not graded (partial)';
+  items.forEach(function (item) {
+    var v = payload[item];
+    values[item + 'Answer'] = (v === null || v === undefined || v === '') ? notAskedText(item, week) : UCLA_ANSWERS[item][v];
+  });
+  if (payload.forwardFlexion === 0 && /not yet/i.test(cellToString(payload.flexionNote))) {
+    values.forwardFlexionAnswer = 'Not yet allowed to lift the arm by itself (scored 0)';
+  }
   values.multipleDevices = reg.devices > 1 ? MULTI_DEVICE_FLAG : '';
   values.receivedAt = new Date();
 
@@ -337,10 +403,83 @@ function handleUcla(payload) {
     if (cellToString(data[i][devCol]) !== deviceId) continue;
     // Same patient, same time point, same phone — a retry: overwrite, don't append.
     sheet.getRange(i + 1, 1, 1, columns.length).setValues([rowFor(columns, values)]);
+    updatePatientSummary(payload.hn);
     return { ok: true, action: 'merged', row: i + 1, total: total };
   }
   sheet.appendRow(rowFor(columns, values));
-  return { ok: true, action: 'inserted', row: sheet.getLastRow(), total: total };
+  var row = sheet.getLastRow();
+  updatePatientSummary(payload.hn);
+  return { ok: true, action: 'inserted', row: row, total: total };
+}
+
+function notAskedText(item, week) {
+  if (item === 'forwardFlexion') return 'Not asked — arm still protected (scored 0)';
+  if (item === 'strength') return 'Not asked before week 12 (scored 0)';
+  return '';
+}
+
+function numberOrBlank(v) {
+  return (v === '' || v === null || v === undefined || isNaN(Number(v))) ? '' : Number(v);
+}
+
+/** Rewrites this patient's one row in "Patient Summary" from what is in the other tabs. */
+function updatePatientSummary(hn) {
+  hn = cellToString(hn);
+  var s = { hn: hn, surgeryDate: '', lastCheckin: '', latestPain: '', avgPain: '', checkinCount: 0,
+    ucla2: '', ucla6: '', ucla12: '', ucla24: '', latestGrade: '', multipleDevices: '', updatedAt: new Date() };
+
+  var reg = ensureSheet('Registrations', REGISTRATION_COLUMNS).getDataRange().getValues();
+  var devices = 0;
+  for (var r = 1; r < reg.length; r++) {
+    if (cellToString(reg[r][0]) !== hn) continue;
+    devices++;
+    var sd = cellToString(reg[r][REGISTRATION_COLUMNS.indexOf('surgeryDate')]);
+    if (sd) s.surgeryDate = sd;
+  }
+  if (devices > 1) s.multipleDevices = MULTI_DEVICE_FLAG;
+
+  var ci = ensureSheet('CheckIns', CHECKIN_COLUMNS).getDataRange().getValues();
+  var dCol = CHECKIN_COLUMNS.indexOf('date'), pCol = CHECKIN_COLUMNS.indexOf('painScore'), sdCol = CHECKIN_COLUMNS.indexOf('surgeryDate');
+  var mine = [];
+  for (var c = 1; c < ci.length; c++) {
+    if (cellToString(ci[c][0]) === hn) mine.push({ date: cellToString(ci[c][dCol]), pain: numberOrBlank(ci[c][pCol]), sd: cellToString(ci[c][sdCol]) });
+  }
+  mine.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  s.checkinCount = mine.length;
+  if (mine.length) {
+    var last = mine[mine.length - 1];
+    s.lastCheckin = last.date;
+    s.latestPain = last.pain;
+    if (last.sd) s.surgeryDate = last.sd;
+    var recent = mine.slice(-7).filter(function (m) { return m.pain !== ''; });
+    if (recent.length) {
+      var sum = recent.reduce(function (t, m) { return t + m.pain; }, 0);
+      s.avgPain = Math.round(sum / recent.length * 10) / 10;
+    }
+  }
+
+  var uSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('UCLA');
+  if (uSheet) {
+    var u = uSheet.getDataRange().getValues();
+    var wCol = UCLA_COLUMNS.indexOf('timepointWeek'), tCol = UCLA_COLUMNS.indexOf('total'), gCol = UCLA_COLUMNS.indexOf('grade');
+    var latestWeek = 0;
+    for (var k = 1; k < u.length; k++) {
+      if (cellToString(u[k][0]) !== hn) continue;
+      var w = Number(u[k][wCol]);
+      s['ucla' + w] = numberOrBlank(u[k][tCol]);
+      if (w >= latestWeek) { latestWeek = w; s.latestGrade = cellToString(u[k][gCol]); }
+    }
+  }
+
+  var sheet = ensureSheet('Patient Summary', SUMMARY_COLUMNS);
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (cellToString(data[i][0]) === hn) {
+      sheet.getRange(i + 1, 1, 1, SUMMARY_COLUMNS.length).setValues([rowFor(SUMMARY_COLUMNS, s)]);
+      return;
+    }
+  }
+  sheet.appendRow(rowFor(SUMMARY_COLUMNS, s));
 }
 
 /** Marks every existing check-in and questionnaire for this HN once a second device appears. */
@@ -363,5 +502,20 @@ function setUpSheets() {
   ensureSheet('Registrations', REGISTRATION_COLUMNS);
   ensureSheet('CheckIns', CHECKIN_COLUMNS);
   ensureSheet('UCLA', UCLA_COLUMNS);
-  return 'Created/verified: Registrations, CheckIns, UCLA';
+  ensureSheet('Patient Summary', SUMMARY_COLUMNS);
+  return 'Created/verified: Registrations, CheckIns, UCLA, Patient Summary';
+}
+
+/**
+ * Run once from the editor after pasting this version to fill "Patient
+ * Summary" for patients who sent data before it existed.
+ */
+function rebuildPatientSummary() {
+  var data = ensureSheet('Registrations', REGISTRATION_COLUMNS).getDataRange().getValues();
+  var seen = {};
+  for (var r = 1; r < data.length; r++) {
+    var hn = cellToString(data[r][0]);
+    if (hn && !seen[hn]) { seen[hn] = true; updatePatientSummary(hn); }
+  }
+  return 'Summary rebuilt for ' + Object.keys(seen).length + ' patient(s)';
 }
