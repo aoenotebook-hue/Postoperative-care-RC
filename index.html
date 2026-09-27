@@ -665,6 +665,7 @@ en: {
   fuExQ:"Which exercises have you done today?",
   fuExSub:"Tap each one you've done today. If you haven't done any yet, just tap Next.",
   fuSeeProgress:"See my progress",
+  fuNewDay:"A new day has started — please answer today's pain and exercises again. Your other answers are kept.",
   tabHome:"Home", tabCare:"Care", tabExercises:"Exercises", tabSleep:"Sleep", tabSOS:"Alert",
   sosTitle:"When to Get Help", sosSub:"If you notice any of the signs below, contact your care team right away.",
   emergencyNote:"For a life-threatening emergency, call 1669 (Thailand emergency medical services) immediately.",
@@ -996,6 +997,7 @@ th: {
   fuExQ:"วันนี้คุณทำท่าบริหารท่าใดไปแล้วบ้าง",
   fuExSub:"แตะเลือกทุกท่าที่ทำไปแล้ววันนี้ หากยังไม่ได้ทำ ให้กดถัดไปได้เลย",
   fuSeeProgress:"ดูความก้าวหน้าของฉัน",
+  fuNewDay:"ขึ้นวันใหม่แล้ว กรุณาตอบความปวดและท่าบริหารของวันนี้อีกครั้ง คำตอบข้ออื่นยังเก็บไว้",
   tabHome:"หน้าแรก", tabCare:"การดูแล", tabExercises:"ท่าบริหาร", tabSleep:"การนอน", tabSOS:"ฉุกเฉิน",
   sosTitle:"เมื่อใดควรขอความช่วยเหลือ", sosSub:"หากพบอาการต่อไปนี้ ให้ติดต่อทีมผู้ดูแลทันที",
   emergencyNote:"หากเป็นเหตุฉุกเฉินที่อาจเป็นอันตรายถึงชีวิต โปรดโทร 1669 (สายด่วนการแพทย์ฉุกเฉิน) ทันที",
@@ -1668,7 +1670,9 @@ function phaseExercises(){
 
 function checkinForWeek(week){
   for(const k in STATE.checkins){ if(STATE.checkins[k].timepointWeek === week) return STATE.checkins[k]; }
-  return null;
+  // A questionnaire done before check-ins carried a week number: use that day's check-in.
+  const e = STATE.ucla[week];
+  return (e && e.date && STATE.checkins[e.date]) || null;
 }
 
 // Side-view figure with the operated arm raised to `deg` from the side of the body.
@@ -1703,7 +1707,7 @@ function maybeShowUclaPopup(){
 function openUcla(week){
   if(!STATE.consentGiven){ openOnboard(true); return; }
   const exIds = phaseExercises().map(e => e.id).filter(id => STATE.doneIds.includes(id));
-  uclaDraft = { week, step:-1, pain:null, exIds, answers:{} };
+  uclaDraft = { week, step:-1, pain:null, exIds, answers:{}, date:todayISO() };
   document.getElementById('ucla-modal').classList.remove('hidden');
   renderUcla();
 }
@@ -1834,7 +1838,17 @@ function uclaNext(){
 }
 
 async function submitUcla(){
-  if(checkDayRollover()) saveState(); // left open past midnight: date the record today, not yesterday
+  if(checkDayRollover()) saveState();
+  if(uclaDraft.date !== todayISO()){
+    // Left open past midnight: "pain today" and "exercises today" were
+    // yesterday's. Ask those two again; the questionnaire answers still stand.
+    uclaDraft.date = todayISO();
+    uclaDraft.pain = null;
+    uclaDraft.exIds = phaseExercises().map(e => e.id).filter(id => STATE.doneIds.includes(id));
+    uclaGo(0);
+    document.getElementById('ucla-validation').textContent = t('fuNewDay');
+    return;
+  }
   const c = CONTENT[STATE.lang];
   const week = uclaDraft.week;
   const items = uclaItemsFor(week);
