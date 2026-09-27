@@ -82,21 +82,9 @@
   .edit-date{border:none;background:none;color:var(--care);font-size:12px;font-weight:600;margin-top:10px;cursor:pointer;text-decoration:underline;}
   .goal-item{font-size:13.5px;color:#262626;line-height:1.6;margin-bottom:4px;}
 
-  /* ---------- Daily Check-in ---------- */
-  .checkin-status{font-size:12.5px;color:var(--teal);font-weight:700;margin-bottom:14px;}
-  .checkin-status.pending{color:var(--muted);font-weight:600;}
-  .pain-label{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;}
-  .pain-scale{display:flex;gap:5px;justify-content:space-between;}
-  .pain-dot{
-    flex:1;aspect-ratio:1;max-width:30px;border-radius:50%;border:1.5px solid var(--border);background:#fff;
-    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:var(--muted);
-    cursor:pointer;transition:.15s;
-  }
-  .pain-dot.selected{background:var(--navy);border-color:var(--navy);color:#fff;transform:scale(1.12);}
-  .pain-dot.locked{cursor:default;}
+  /* ---------- Pain scale / form validation ---------- */
   .pain-scale-labels{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:6px;}
   .checkin-validation{font-size:12px;color:var(--danger);margin-top:10px;min-height:14px;}
-  .checkin-privacy{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.5;}
   .card .primary-btn{margin-top:14px;}
 
   /* ---------- Home footer ---------- */
@@ -227,9 +215,10 @@
     background:#fff;border-top:1px solid var(--border);display:flex;
     padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));z-index:30;
   }
-  .tab-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;cursor:pointer;color:var(--muted);}
+  .tab-btn{flex:1;min-width:0;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;cursor:pointer;color:var(--muted);}
   .tab-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;}
-  .tab-btn span{font-size:10px;font-weight:600;}
+  .tab-btn span{font-size:9.5px;font-weight:600;white-space:nowrap;letter-spacing:-.1px;}
+  @media (max-width:340px){ .tab-btn span{font-size:8.5px;} .tab-btn svg{width:20px;height:20px;} }
   .tab-btn.active{color:var(--navy);}
   .tab-btn.sos{color:var(--danger);}
   .tab-btn.sos.active{color:var(--danger-dark);}
@@ -296,12 +285,51 @@
   .ucla-score-big{font-size:46px;font-weight:800;color:var(--navy);line-height:1.1;}
   .ucla-score-big small{font-size:18px;color:var(--muted);font-weight:700;}
   .ucla-score-label{font-size:14px;color:var(--muted);font-weight:600;}
-  .ucla-card-msg{font-size:14.5px;line-height:1.55;color:#333;margin:6px 0 10px;}
-  .ucla-history{margin:10px 0 4px;display:flex;flex-direction:column;gap:6px;}
-  .ucla-history-row{display:flex;justify-content:space-between;align-items:center;background:#F5F7FA;border-radius:10px;padding:9px 12px;font-size:14px;}
-  .ucla-history-row b{color:var(--navy);}
   .ucla-history-note{font-size:12px;color:var(--warn-text);}
-  .ucla-schedule{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5;}
+  .ucla-opt .radio.check{border-radius:7px;}
+  .ucla-opt.selected .radio.check::after{content:"✓";width:auto;height:auto;background:none;color:#fff;font-size:15px;font-weight:800;line-height:1;}
+  .fu-pain-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+  .fu-pain-btn{min-height:50px;border-radius:12px;border:2px solid;font-size:19px;font-weight:800;font-family:var(--font);cursor:pointer;}
+  .fu-pain-btn.selected{transform:scale(1.06);box-shadow:0 2px 8px rgba(20,30,50,.18);}
+
+  /* ---------- Progress tab ---------- */
+  .prog-text{font-size:14.5px;line-height:1.55;color:#333;margin:8px 0 4px;}
+  .prog-muted{font-size:12.5px;line-height:1.5;color:var(--muted);margin:6px 0 0;}
+  .prog-status{display:flex;flex-direction:column;gap:2px;margin-top:6px;}
+  .prog-day{font-size:22px;font-weight:800;color:var(--navy);}
+  .prog-phase{font-size:13px;font-weight:700;color:var(--teal);}
+  .prog-due{border:2px solid var(--teal);}
+  .prog-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+  .prog-tile{background:#F5F7FA;border-radius:12px;padding:12px 6px;text-align:center;}
+  .prog-tile-num{font-size:24px;font-weight:800;color:var(--navy);line-height:1.1;}
+  .prog-tile-num small{font-size:12px;color:var(--muted);font-weight:700;}
+  .prog-tile-label{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:4px;line-height:1.3;}
+  .prog-sub-title{font-size:13px;font-weight:800;color:var(--navy);margin:4px 0 8px;}
+  .prog-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;}
+  .prog-bar-name{width:112px;flex-shrink:0;color:#333;}
+  .prog-bar-track{flex:1;height:8px;border-radius:4px;background:#E9EDF3;overflow:hidden;}
+  .prog-bar-track i{display:block;height:100%;border-radius:4px;background:var(--teal);}
+  .prog-bar-val{width:92px;flex-shrink:0;text-align:right;font-weight:700;color:var(--text);font-size:12.5px;}
+  .prog-timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 6px;}
+  .prog-step{border-radius:10px;padding:8px 4px;text-align:center;background:#F5F7FA;border:1.5px solid transparent;}
+  .prog-step-week{font-size:11.5px;font-weight:800;color:var(--navy);}
+  .prog-step-val{font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:600;}
+  .prog-step.done{background:#EAF4EE;}
+  .prog-step.done .prog-step-val{color:#1d6b3f;font-weight:800;}
+  .prog-step.now{border-color:var(--teal);}
+  .prog-step.now .prog-step-val{color:var(--teal);font-weight:800;}
+  .prog-step.missed .prog-step-val{color:var(--warn-text);}
+  .prog-chart{margin-top:16px;}
+  .prog-chart-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;}
+  .prog-chart svg{width:100%;height:auto;display:block;}
+  .prog-values{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:2px;}
+  .prog-values div{text-align:center;font-size:11.5px;color:var(--muted);}
+  .prog-values b{display:block;font-size:14px;color:var(--text);}
+  .care-tips{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+  .care-tip{display:flex;gap:10px;align-items:flex-start;background:#F5F7FA;border-radius:12px;padding:11px 12px;font-size:14px;line-height:1.5;color:#333;}
+  .care-tip.warn{background:var(--warn-bg);color:var(--warn-text);font-weight:600;}
+  .care-tip-icon{flex-shrink:0;font-weight:800;color:var(--teal);}
+  .care-tip.warn .care-tip-icon{color:inherit;}
 
   ::-webkit-scrollbar{width:0;height:0;}
 </style>
@@ -357,29 +385,15 @@
         <p class="muted" id="today-reminders" style="line-height:1.6;font-size:13.5px;color:#3a3a3a;"></p>
       </div>
 
-      <div class="card" id="checkin-card">
-        <h2 data-t="checkinTitle">Daily Check-in</h2>
-        <div class="checkin-status" id="checkin-status"></div>
-        <div class="pain-label" data-t="checkinPainLabel">Pain level today</div>
-        <div class="pain-scale" id="pain-scale"></div>
-        <div class="pain-scale-labels">
-          <span data-t="checkinNoPain">No pain</span>
-          <span data-t="checkinWorstPain">Worst pain</span>
-        </div>
-        <div class="checkin-validation" id="checkin-validation"></div>
-        <button class="primary-btn" id="checkin-submit-btn" onclick="handleSubmitCheckin()" data-t="checkinSubmitBtn">Submit Today's Check-in</button>
-        <div class="checkin-privacy" data-t="checkinPrivacyNote">Your responses help your care team follow your recovery.</div>
-      </div>
-
-      <div class="card hidden" id="ucla-card">
-        <h2 data-t="uclaCardTitle">Shoulder Questionnaire</h2>
-        <div id="ucla-card-body"></div>
-      </div>
-
       <div class="home-footer">
         <div class="surgeon-credit"><span data-t="surgeonLabel">Your surgeon</span>: <span id="surgeon-name"></span></div>
         <button class="reset-link" onclick="handleResetApp()" data-t="resetBtn">Reset App Data</button>
       </div>
+    </section>
+
+    <!-- PROGRESS -->
+    <section class="view" id="view-progress">
+      <div id="progress-body"></div>
     </section>
 
     <!-- CARE -->
@@ -435,6 +449,10 @@
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
       <span data-t="tabHome">Home</span>
+    </button>
+    <button class="tab-btn" data-tab="progress" onclick="switchTab('progress')">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+      <span data-t="tabProgress">Progress</span>
     </button>
     <button class="tab-btn" data-tab="care" onclick="switchTab('care')">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M9 12h6M9 16h6"/></svg>
@@ -529,26 +547,10 @@ en: {
   roadmapTitle:"Your Recovery Roadmap", todayTitle:"Today's Reminders",
   goalsTitle:"Goals After Surgery",
   goals:["Protect the repaired tendon","Minimize stiffness"],
-  checkinTitle:"Daily Check-in",
-  checkinPainLabel:"Pain level today",
   checkinNoPain:"No pain",
   checkinWorstPain:"Worst pain",
-  checkinSubmitBtn:"Submit Today's Check-in",
-  checkinLockedNote:"you can check in again tomorrow",
-  checkinSubmittedPrefix:"Submitted today at ",
-  checkinNotSubmitted:"Not yet submitted today",
   checkinNotSyncedNote:"(Saved on this phone — not yet sent to your care team. It will send automatically.)",
   /* UCLA shoulder questionnaire */
-  uclaCardTitle:"Shoulder Questionnaire",
-  uclaCardDue:"Your week {w} questionnaire is ready. It takes about 2 minutes.",
-  uclaCardLate:"Your week {w} questionnaire is still open until {date}. It takes about 2 minutes.",
-  uclaCardStart:"Start questionnaire",
-  uclaCardNext:"Next questionnaire: week {w}, from {date}.",
-  uclaCardAllDone:"All four questionnaires are done. Thank you!",
-  uclaCardSchedule:"You'll be asked at 2, 6, 12 and 24 weeks after surgery.",
-  uclaHistoryRow:"Week {w}",
-  uclaIntroTitle:"How is your shoulder?",
-  uclaIntroText:"It's week {w} after your surgery. Please answer {n} short questions about your shoulder. It takes about 2 minutes, and your answers help your surgeon follow your recovery.",
   uclaStart:"Start", uclaLater:"Later", uclaNext:"Next", uclaBack:"Back", uclaSubmit:"Send my answers",
   uclaProgress:"Question {i} of {n}",
   uclaValidation:"Please choose one answer.",
@@ -598,13 +600,71 @@ en: {
       {v:0, t:"Not satisfied — it is worse."}
     ]}
   },
-  checkinValidation:"Please select a pain level before submitting.",
-  checkinPrivacyNote:"Your responses help your care team follow your recovery.",
   surgeonLabel:"Your surgeon",
   surgeonName:"Dr. Sorawut Thamyongkit",
   resetBtn:"Reset App Data",
   resetConfirm:"This will erase your surgery date, HN, exercise progress, and check-ins on this device. This can't be undone. Continue?",
   hnPrefix:"HN: ", hnAdd:"Add your Hospital Number (HN)",
+  /* Progress tab and the week 2/6/12/24 check-in */
+  tabProgress:"Progress",
+  progTitle:"Your Progress",
+  progDayLine:"Day {d} after surgery",
+  progNoDate:"Set your surgery date on the Home tab to see your progress.",
+  progPreop:"Your first check-in will be 2 weeks after surgery, from {date}.",
+  progNext:"Next check-in: week {w}, from {date}.",
+  progAllDone:"You've completed all four check-ins. Thank you!",
+  progSchedule:"Check-ins are at 2, 6, 12 and 24 weeks after surgery. Each takes about 3 minutes.",
+  progDueTitle:"Your week {w} check-in is ready",
+  progDueText:"A few short questions about your pain, exercises and shoulder. It takes about 3 minutes.",
+  progLateText:"You can still do it until {date}.",
+  progStart:"Start check-in",
+  progResultsTitle:"Week {w} results",
+  progAnswered:"Answered on {date}",
+  progPainLabel:"Pain today",
+  progExLabel:"Exercises done",
+  progBreakdownTitle:"Shoulder score in detail",
+  progItemNames:{ pain:"Pain", function:"Using your arm", forwardFlexion:"Lifting forward", strength:"Strength", satisfaction:"Satisfaction" },
+  progNotAskedYet:"Not asked yet",
+  progTrendTitle:"Your progression",
+  progChartUcla:"Shoulder score (out of 35) — higher is better",
+  progChartPain:"Pain today (0–10) — lower is better",
+  progWeekShort:"Week {w}",
+  progTimelineDue:"Now",
+  progTimelineMissed:"Missed",
+  progCareTitle:"Care suggestions for you",
+  careTips:{
+    phase:[
+      [],
+      ["Wear your sling as instructed, including at night.",
+       "Do only the gentle exercises for this phase — don't lift the arm by itself yet.",
+       "Keep your elbow, wrist and fingers moving several times a day."],
+      ["Stop using the sling only when your care team tells you to.",
+       "Do your assisted exercises slowly, without shrugging your shoulder.",
+       "Don't lift anything heavier than a cup of water with this arm."],
+      ["Start light strengthening as your physiotherapist shows you.",
+       "Mild muscle soreness is normal; sharp pain means ease off.",
+       "Avoid heavy lifting and sudden, jerky movements."],
+      ["Keep up your strengthening exercises a few times a week.",
+       "Return to sport or heavy work only when your surgeon says it's safe.",
+       "Full recovery can take up to a year — keep going."]
+    ],
+    painHigh:"Your pain was high ({p}/10). Take your pain medicine as prescribed, use ice for 15–20 minutes, and rest your arm. If the pain is severe or getting worse, or you have a fever, wound redness or discharge, call the clinic — see the Alert tab.",
+    painMid:"Your pain was moderate ({p}/10). Taking pain medicine about 30 minutes before your exercises, and ice afterwards, can help.",
+    painLow:"Your pain was well controlled ({p}/10). Keep going.",
+    improved:"Your shoulder score went up since week {w} ({a} → {b} on the questions asked both times). Well done!",
+    worse:"Your shoulder score is lower than at week {w} ({a} → {b}). This can happen, but please mention it at your next visit.",
+    same:"Your shoulder score is about the same as at week {w}. Keep going with your exercises.",
+    notSatisfied:"You told us you're not satisfied with your shoulder. Please tell your surgeon at your next visit, or call the clinic if you're worried.",
+    exLow:"Try to do your exercises every day — they are the most important part of your recovery. See the Exercises tab.",
+    exAll:"Great job doing all of today's exercises."
+  },
+  fuIntroTitle:"Week {w} check-in",
+  fuIntroText:"It's week {w} after your surgery. Please answer {n} short questions about your pain, exercises and shoulder. It takes about 3 minutes, and your answers help your surgeon follow your recovery.",
+  fuPainQ:"How much does your shoulder hurt today?",
+  fuPainSub:"0 = no pain, 10 = the worst pain you can imagine.",
+  fuExQ:"Which exercises have you done today?",
+  fuExSub:"Tap each one you've done today. If you haven't done any yet, just tap Next.",
+  fuSeeProgress:"See my progress",
   tabHome:"Home", tabCare:"Care", tabExercises:"Exercises", tabSleep:"Sleep", tabSOS:"Alert",
   sosTitle:"When to Get Help", sosSub:"If you notice any of the signs below, contact your care team right away.",
   emergencyNote:"For a life-threatening emergency, call 1669 (Thailand emergency medical services) immediately.",
@@ -797,7 +857,7 @@ en: {
   privacy:[
     { icon:"📱", text:"Your answers are stored on this phone. If you clear the app's data or switch phones, this data will be lost." },
     { icon:"🎯", text:"Your data is used only to show your shoulder's progress and recommend care suited to you." },
-    { icon:"🏥", text:"Your daily check-in results and shoulder questionnaire answers are sent to your care team and recorded to support your treatment." },
+    { icon:"🏥", text:"Your check-in results and shoulder questionnaire answers are sent to your care team and recorded to support your treatment." },
     { icon:"🔒", text:"No data is sent anywhere before you give consent, and the app never sends data automatically in the background." },
     { icon:"🙈", text:"If you share this phone with someone else, be aware that anyone who opens this app can see your data." },
     { icon:"🗑️", text:"You can delete all data on this device at any time using the \"Reset App Data\" button at the bottom of the Home tab." },
@@ -818,26 +878,10 @@ th: {
   roadmapTitle:"เส้นทางการฟื้นตัวของท่าน", todayTitle:"สิ่งที่ควรทำวันนี้",
   goalsTitle:"เป้าหมายหลังผ่าตัด",
   goals:["ปกป้องเอ็นที่ซ่อมแซม","ลดอาการข้อไหล่ติดแข็ง"],
-  checkinTitle:"บันทึกประจำวัน",
-  checkinPainLabel:"ระดับความปวดวันนี้",
   checkinNoPain:"ไม่ปวด",
   checkinWorstPain:"ปวดมากที่สุด",
-  checkinSubmitBtn:"ส่งบันทึกวันนี้",
-  checkinLockedNote:"พรุ่งนี้สามารถบันทึกได้อีกครั้ง",
-  checkinSubmittedPrefix:"ส่งแล้วเมื่อ ",
-  checkinNotSubmitted:"ยังไม่ได้ส่งบันทึกวันนี้",
   checkinNotSyncedNote:"(บันทึกไว้ในเครื่องแล้ว แต่ยังไม่ได้ส่งถึงทีมผู้ดูแล ระบบจะส่งให้อัตโนมัติ)",
   /* UCLA shoulder questionnaire */
-  uclaCardTitle:"แบบประเมินไหล่",
-  uclaCardDue:"แบบประเมินสัปดาห์ที่ {w} พร้อมแล้ว ใช้เวลาประมาณ 2 นาที",
-  uclaCardLate:"ยังทำแบบประเมินสัปดาห์ที่ {w} ได้ถึงวันที่ {date} ใช้เวลาประมาณ 2 นาที",
-  uclaCardStart:"เริ่มทำแบบประเมิน",
-  uclaCardNext:"แบบประเมินครั้งถัดไป: สัปดาห์ที่ {w} เริ่มวันที่ {date}",
-  uclaCardAllDone:"ทำแบบประเมินครบทั้ง 4 ครั้งแล้ว ขอบคุณ",
-  uclaCardSchedule:"ระบบจะชวนให้ทำเมื่อครบ 2, 6, 12 และ 24 สัปดาห์หลังผ่าตัด",
-  uclaHistoryRow:"สัปดาห์ที่ {w}",
-  uclaIntroTitle:"ไหล่ของคุณเป็นอย่างไรบ้าง",
-  uclaIntroText:"ครบ {w} สัปดาห์หลังผ่าตัดแล้ว กรุณาตอบคำถามสั้น ๆ {n} ข้อเกี่ยวกับไหล่ของคุณ ใช้เวลาประมาณ 2 นาที คำตอบของคุณช่วยให้แพทย์ติดตามการฟื้นตัวได้",
   uclaStart:"เริ่ม", uclaLater:"ไว้ภายหลัง", uclaNext:"ถัดไป", uclaBack:"ย้อนกลับ", uclaSubmit:"ส่งคำตอบ",
   uclaProgress:"ข้อ {i} จาก {n}",
   uclaValidation:"กรุณาเลือกคำตอบ 1 ข้อ",
@@ -887,14 +931,72 @@ th: {
       {v:0, t:"ไม่พอใจ — ไหล่แย่ลง"}
     ]}
   },
-  checkinValidation:"กรุณาเลือกระดับความปวดก่อนส่งบันทึก",
-  checkinPrivacyNote:"คำตอบของท่านช่วยให้ทีมผู้ดูแลติดตามการฟื้นตัวของท่านได้",
   surgeonLabel:"ศัลยแพทย์ของท่าน",
   surgeonName:"นพ.สรวุฒิ ธรรมยงค์กิจ",
   resetBtn:"รีเซ็ตข้อมูลแอป",
-  resetConfirm:"การดำเนินการนี้จะลบวันที่ผ่าตัด หมายเลข HN ความคืบหน้าการทำท่าบริหาร และบันทึกประจำวันทั้งหมดในเครื่องนี้ และไม่สามารถกู้คืนข้อมูลได้ ต้องการดำเนินการต่อหรือไม่?",
+  resetConfirm:"การดำเนินการนี้จะลบวันที่ผ่าตัด หมายเลข HN ความคืบหน้าการทำท่าบริหาร และผลการติดตามทั้งหมดในเครื่องนี้ และไม่สามารถกู้คืนข้อมูลได้ ต้องการดำเนินการต่อหรือไม่?",
   hnPrefix:"HN: ", hnAdd:"เพิ่มหมายเลข HN ของท่าน",
-  tabHome:"หน้าแรก", tabCare:"การดูแล", tabExercises:"ท่าบริหาร", tabSleep:"การนอน", tabSOS:"สัญญาณเตือน",
+  /* Progress tab and the week 2/6/12/24 check-in */
+  tabProgress:"ติดตามผล",
+  progTitle:"ความก้าวหน้าของคุณ",
+  progDayLine:"วันที่ {d} หลังผ่าตัด",
+  progNoDate:"กรุณาตั้งวันที่ผ่าตัดที่แท็บหน้าแรก เพื่อดูความก้าวหน้าของคุณ",
+  progPreop:"การติดตามผลครั้งแรกคือเมื่อครบ 2 สัปดาห์หลังผ่าตัด เริ่มวันที่ {date}",
+  progNext:"การติดตามผลครั้งถัดไป: สัปดาห์ที่ {w} เริ่มวันที่ {date}",
+  progAllDone:"คุณทำการติดตามผลครบทั้ง 4 ครั้งแล้ว ขอบคุณ",
+  progSchedule:"การติดตามผลมีเมื่อครบ 2, 6, 12 และ 24 สัปดาห์หลังผ่าตัด แต่ละครั้งใช้เวลาประมาณ 3 นาที",
+  progDueTitle:"ถึงเวลาติดตามผลสัปดาห์ที่ {w} แล้ว",
+  progDueText:"ตอบคำถามสั้น ๆ เกี่ยวกับความปวด ท่าบริหาร และไหล่ของคุณ ใช้เวลาประมาณ 3 นาที",
+  progLateText:"ยังทำได้ถึงวันที่ {date}",
+  progStart:"เริ่มติดตามผล",
+  progResultsTitle:"ผลสัปดาห์ที่ {w}",
+  progAnswered:"ตอบเมื่อ {date}",
+  progPainLabel:"ความปวดวันนั้น",
+  progExLabel:"ท่าบริหารที่ทำ",
+  progBreakdownTitle:"รายละเอียดคะแนนไหล่",
+  progItemNames:{ pain:"ความปวด", function:"การใช้งานแขน", forwardFlexion:"การยกแขนไปข้างหน้า", strength:"กำลังของแขน", satisfaction:"ความพึงพอใจ" },
+  progNotAskedYet:"ยังไม่ได้ถาม",
+  progTrendTitle:"ความก้าวหน้า",
+  progChartUcla:"คะแนนไหล่ (เต็ม 35) — ยิ่งสูงยิ่งดี",
+  progChartPain:"ความปวด (0–10) — ยิ่งต่ำยิ่งดี",
+  progWeekShort:"สัปดาห์ {w}",
+  progTimelineDue:"ถึงเวลาแล้ว",
+  progTimelineMissed:"พลาดไป",
+  progCareTitle:"คำแนะนำการดูแลสำหรับคุณ",
+  careTips:{
+    phase:[
+      [],
+      ["ใส่ที่คล้องแขนตามคำแนะนำ รวมถึงขณะนอนหลับ",
+       "ทำเฉพาะท่าบริหารเบา ๆ ของระยะนี้ ยังไม่ยกแขนขึ้นเอง",
+       "ขยับข้อศอก ข้อมือ และนิ้วมือวันละหลายครั้ง"],
+      ["เลิกใช้ที่คล้องแขนเมื่อทีมผู้ดูแลแนะนำเท่านั้น",
+       "ทำท่าบริหารแบบมีตัวช่วยอย่างช้า ๆ โดยไม่ยักไหล่",
+       "ห้ามยกของที่หนักกว่าแก้วน้ำหนึ่งแก้วด้วยแขนข้างนี้"],
+      ["เริ่มฝึกเสริมความแข็งแรงเบา ๆ ตามที่นักกายภาพบำบัดแนะนำ",
+       "ปวดเมื่อยกล้ามเนื้อเล็กน้อยเป็นเรื่องปกติ แต่ถ้าปวดแปลบให้ลดความหนักลง",
+       "หลีกเลี่ยงการยกของหนักและการเคลื่อนไหวแบบกระชาก"],
+      ["ทำท่าเสริมความแข็งแรงต่อเนื่องสัปดาห์ละหลายครั้ง",
+       "กลับไปเล่นกีฬาหรือทำงานหนักเมื่อแพทย์อนุญาตเท่านั้น",
+       "การฟื้นตัวเต็มที่อาจใช้เวลาถึง 1 ปี ทำต่อไปอย่างสม่ำเสมอ"]
+    ],
+    painHigh:"คุณปวดมาก ({p}/10) รับประทานยาแก้ปวดตามที่แพทย์สั่ง ประคบเย็น 15–20 นาที และพักแขน หากปวดรุนแรงหรือปวดมากขึ้น หรือมีไข้ แผลบวมแดงหรือมีหนอง ให้โทรหาคลินิก — ดูที่แท็บฉุกเฉิน",
+    painMid:"คุณปวดปานกลาง ({p}/10) การรับประทานยาแก้ปวดก่อนทำท่าบริหารประมาณ 30 นาที และประคบเย็นหลังทำ จะช่วยได้",
+    painLow:"คุณควบคุมความปวดได้ดี ({p}/10) ทำต่อไปแบบนี้",
+    improved:"คะแนนไหล่ของคุณดีขึ้นจากสัปดาห์ที่ {w} ({a} → {b} ในคำถามที่ถามทั้งสองครั้ง) เยี่ยมมาก!",
+    worse:"คะแนนไหล่ของคุณลดลงจากสัปดาห์ที่ {w} ({a} → {b}) อาจเกิดขึ้นได้ แต่โปรดแจ้งแพทย์เมื่อมาตรวจครั้งถัดไป",
+    same:"คะแนนไหล่ของคุณใกล้เคียงกับสัปดาห์ที่ {w} ทำท่าบริหารต่อไปอย่างสม่ำเสมอ",
+    notSatisfied:"คุณแจ้งว่ายังไม่พอใจกับไหล่ของคุณ โปรดแจ้งแพทย์เมื่อมาตรวจครั้งถัดไป หรือโทรหาคลินิกหากกังวล",
+    exLow:"พยายามทำท่าบริหารทุกวัน เพราะเป็นส่วนสำคัญที่สุดของการฟื้นตัว ดูได้ที่แท็บท่าบริหาร",
+    exAll:"เยี่ยมมากที่ทำท่าบริหารครบทุกท่าในวันนี้"
+  },
+  fuIntroTitle:"ติดตามผลสัปดาห์ที่ {w}",
+  fuIntroText:"ครบ {w} สัปดาห์หลังผ่าตัดแล้ว กรุณาตอบคำถามสั้น ๆ {n} ข้อเกี่ยวกับความปวด ท่าบริหาร และไหล่ของคุณ ใช้เวลาประมาณ 3 นาที คำตอบของคุณช่วยให้แพทย์ติดตามการฟื้นตัวได้",
+  fuPainQ:"วันนี้คุณปวดไหล่มากแค่ไหน",
+  fuPainSub:"0 = ไม่ปวดเลย, 10 = ปวดมากที่สุดเท่าที่จะนึกได้",
+  fuExQ:"วันนี้คุณทำท่าบริหารท่าใดไปแล้วบ้าง",
+  fuExSub:"แตะเลือกทุกท่าที่ทำไปแล้ววันนี้ หากยังไม่ได้ทำ ให้กดถัดไปได้เลย",
+  fuSeeProgress:"ดูความก้าวหน้าของฉัน",
+  tabHome:"หน้าแรก", tabCare:"การดูแล", tabExercises:"ท่าบริหาร", tabSleep:"การนอน", tabSOS:"ฉุกเฉิน",
   sosTitle:"เมื่อใดควรขอความช่วยเหลือ", sosSub:"หากพบอาการต่อไปนี้ ให้ติดต่อทีมผู้ดูแลทันที",
   emergencyNote:"หากเป็นเหตุฉุกเฉินที่อาจเป็นอันตรายถึงชีวิต โปรดโทร 1669 (สายด่วนการแพทย์ฉุกเฉิน) ทันที",
   appDisclaimer:"แอปนี้ให้ข้อมูลทั่วไปเท่านั้น ไม่สามารถใช้แทนคำแนะนำจากแพทย์ผู้ผ่าตัดหรือนักกายภาพบำบัดของท่าน กรุณาปฏิบัติตามคำแนะนำของทีมผู้ดูแลเสมอ",
@@ -1081,12 +1183,12 @@ th: {
     "ได้ยินเสียง \"ป๊อก\" หรือรู้สึกเหมือนมีอะไรฉีกขาดทันที ร่วมกับปวดรุนแรงและขยับไม่ได้",
     "ชา รู้สึกซ่า หรือขยับมือได้น้อยลงเรื่อยๆ หลังยาชาเฉพาะที่หมดฤทธิ์แล้ว",
   ],
-  tabResources:"แหล่งข้อมูล",
+  tabResources:"ข้อมูล",
   privacyTitle:"ความเป็นส่วนตัวของท่าน",
   privacy:[
     { icon:"📱", text:"คำตอบของท่านถูกเก็บไว้ในโทรศัพท์เครื่องนี้ หากล้างข้อมูลแอปหรือเปลี่ยนเครื่อง ข้อมูลจะหายไป" },
     { icon:"🎯", text:"ข้อมูลของท่านใช้เพื่อแสดงความก้าวหน้าของอาการไหล่ และแนะนำการดูแลที่เหมาะสมกับท่านเท่านั้น" },
-    { icon:"🏥", text:"ผลบันทึกประจำวันและคำตอบแบบประเมินไหล่ของท่านจะถูกส่งไปยังทีมผู้ดูแล และบันทึกไว้เป็นส่วนหนึ่งของประวัติการรักษาของท่าน" },
+    { icon:"🏥", text:"ผลการติดตามและคำตอบแบบประเมินไหล่ของท่านจะถูกส่งไปยังทีมผู้ดูแล และบันทึกไว้เป็นส่วนหนึ่งของประวัติการรักษาของท่าน" },
     { icon:"🔒", text:"ไม่มีการส่งข้อมูลใดก่อนที่ท่านจะยินยอม และแอปจะไม่ส่งข้อมูลเองโดยอัตโนมัติอยู่เบื้องหลัง" },
     { icon:"🙈", text:"หากท่านใช้โทรศัพท์ร่วมกับผู้อื่น โปรดทราบว่าผู้ที่เปิดแอปนี้จะเห็นข้อมูลของท่านได้" },
     { icon:"🗑️", text:"ท่านสามารถลบข้อมูลทั้งหมดบนเครื่องนี้ได้ทุกเมื่อ ด้วยปุ่ม \"รีเซ็ตข้อมูลแอป\" ที่ด้านล่างของแท็บหน้าแรก" },
@@ -1106,7 +1208,6 @@ th: {
 /* ============================= STATE ============================= */
 let STATE = { lang:"th", surgeryDate:null, hn:"", logDate:null, doneIds:[], checkins:{}, consentGiven:false, homeScreenPromptShown:false, deviceToken:null, registered:false, ucla:{}, uclaPromptedOn:null };
 let currentExPhase = null; // resolved to the patient's current phase on first render
-let selectedPain = null;
 
 // Local calendar date as YYYY-MM-DD. toISOString() would return the UTC date, which in
 // Thailand (UTC+7) is still yesterday between midnight and 07:00 — that made the app roll
@@ -1187,7 +1288,6 @@ function handleResetApp(){
 // returns to it the next day without a full page reload.
 document.addEventListener('visibilitychange', () => {
   if(!document.hidden && checkDayRollover()){
-    selectedPain = null;
     saveState();
     renderAll();
     maybeShowUclaPopup();
@@ -1363,119 +1463,13 @@ function renderHome(){
   // Surgeon credit
   document.getElementById('surgeon-name').textContent = c.surgeonName;
 
-  renderCheckin();
-  renderUclaCard();
 }
 
-/* ============================= DAILY CHECK-IN ============================= */
+/* ============================= PAIN COLOURS ============================= */
 function painColor(v){
   if(v<=3) return { bg:"#EAF4EE", border:"#8FC9A8", text:"#1d6b3f" };
   if(v<=6) return { bg:"#FDF3E3", border:"#E8B860", text:"#8a6100" };
   return { bg:"#FDECEC", border:"#E68A84", text:"#a02620" };
-}
-
-function renderCheckin(){
-  const c = CONTENT[STATE.lang];
-  const today = todayISO();
-  const existing = STATE.checkins[today];
-  const locked = !!existing;
-
-  // The daily pain check-in only applies after surgery — hide it entirely before the surgery date.
-  const offset = daySinceOffset();
-  const isPreop = offset !== null && offset < 0;
-  const card = document.getElementById('checkin-card');
-  card.classList.toggle('hidden', isPreop);
-  if(isPreop) return;
-
-  // initialize selectedPain from any existing submission for today, on first render of the day
-  if(existing && selectedPain===null) selectedPain = existing.painScore;
-
-  const scaleEl = document.getElementById('pain-scale');
-  scaleEl.innerHTML = Array.from({length:11}, (_,v)=>{
-    const isSel = selectedPain===v;
-    const col = painColor(v);
-    let style;
-    if(locked){
-      style = isSel ? `background:${col.text};border-color:${col.text};color:#fff;` : `background:#F1F2F4;border-color:#E6E9EF;color:#C7CBD3;`;
-    } else {
-      style = isSel ? `background:${col.text};border-color:${col.text};color:#fff;` : `background:${col.bg};border-color:${col.border};color:${col.text};`;
-    }
-    const clickAttr = locked ? '' : `onclick="selectPain(${v})"`;
-    return `<div class="pain-dot ${isSel?'selected':''} ${locked?'locked':''}" style="${style}" ${clickAttr}>${v}</div>`;
-  }).join('');
-
-  const statusEl = document.getElementById('checkin-status');
-  if(existing){
-    const t = new Date(existing.submittedAt);
-    const hh = String(t.getHours()).padStart(2,'0'), mm = String(t.getMinutes()).padStart(2,'0');
-    statusEl.textContent = "✓ " + c.checkinSubmittedPrefix + hh + ":" + mm + " — " + c.checkinLockedNote
-      + (existing.synced ? "" : " " + c.checkinNotSyncedNote);
-    statusEl.className = "checkin-status";
-  } else {
-    statusEl.textContent = c.checkinNotSubmitted;
-    statusEl.className = "checkin-status pending";
-  }
-
-  const btn = document.getElementById('checkin-submit-btn');
-  btn.style.display = locked ? 'none' : 'block';
-  document.getElementById('checkin-validation').textContent = '';
-}
-
-function selectPain(v){
-  selectedPain = v;
-  renderCheckin();
-}
-
-async function handleSubmitCheckin(){
-  const c = CONTENT[STATE.lang];
-  if(checkDayRollover()){ // app left open across midnight — make sure this lands on the right day
-    selectedPain = null;
-    saveState();
-    renderAll();
-    return;
-  }
-  if(STATE.checkins[todayISO()]){
-    return; // already submitted today — button should be hidden, this is a safety guard
-  }
-  if(!STATE.consentGiven){
-    openOnboard(true); // route through setup/consent before any data is sent
-    return;
-  }
-  if(selectedPain===null){
-    document.getElementById('checkin-validation').textContent = c.checkinValidation;
-    return;
-  }
-
-  const offset = daySinceOffset();
-  const phaseIdx = currentPhaseIndex(offset);
-  const sources = EXERCISE_SOURCES[phaseIdx];
-  const exList = sources.flatMap(src => c.exercises[src]);
-  const doneSet = new Set(STATE.doneIds);
-  const doneToday = exList.filter(e=>doneSet.has(e.id));
-
-  const payload = {
-    type: 'checkin',
-    date: todayISO(),
-    submittedAt: new Date().toISOString(),
-    hn: STATE.hn || "",
-    deviceToken: getDeviceToken(),
-    surgeryDate: STATE.surgeryDate || "",
-    phase: c.phaseNames[phaseIdx] + " - " + c.phaseTitles[phaseIdx],
-    painScore: selectedPain,
-    exercisesDoneCount: doneToday.length,
-    exercisesTotalCount: exList.length,
-    exercisesDoneNames: doneToday.map(e=>e.name).join("; "),
-  };
-
-  // The device token authenticates the outgoing request; it doesn't need to be
-  // duplicated in the locally-stored copy of this check-in.
-  const { deviceToken, ...stored } = payload;
-  STATE.checkins[payload.date] = Object.assign(stored, { synced:false, syncFailed:false });
-  saveState();
-  renderCheckin();
-
-  await syncOneCheckin(payload.date);
-  renderCheckin();
 }
 
 // Patients type their HN in many ways ("HN 1234567", "hn:1234567", Thai digits,
@@ -1540,7 +1534,7 @@ async function syncOneCheckin(dateKey){
   return syncRecord(STATE.checkins[dateKey], 'checkin');
 }
 
-// Sends one queued record (a daily check-in or a questionnaire) and marks it
+// Sends one queued record (a check-in or a questionnaire) and marks it
 // synced only once the backend confirms it was saved.
 async function syncRecord(entry, type){
   if(!entry || entry.synced) return;
@@ -1596,13 +1590,17 @@ async function trySyncPendingCheckins(){
       attempted = true;
     }
   }
-  if(attempted){ renderCheckin(); renderUclaCard(); } // clear or keep the "not yet sent" note to match reality
+  if(attempted) renderProgress(); // clear or keep the "not yet sent" note to match reality
 }
 
-/* ===================== UCLA SHOULDER QUESTIONNAIRE =====================
-   UCLA shoulder rating scale (Amstutz 1981; Ellman grading for cuff repair),
-   35 points: pain 10 + function 10 + active forward flexion 5 + strength 5 +
-   satisfaction 5. Asked at 2, 6, 12 and 24 weeks after surgery.
+/* ===================== FOLLOW-UP CHECK-INS & PROGRESS TAB =====================
+   At 2, 6, 12 and 24 weeks after surgery the patient does one combined
+   check-in: pain today (0–10), which exercises they did today, then the UCLA
+   shoulder rating scale (Amstutz 1981; Ellman grading for cuff repair, 35
+   points: pain 10 + function 10 + active forward flexion 5 + strength 5 +
+   satisfaction 5). It pops up once a day during that week until done; the
+   Progress tab then shows the results, the progression across the four
+   weeks, and care suggestions.
 
    Nothing asks a patient to do what their protocol doesn't allow yet:
    week 2 (arm protected, no active lifting) asks pain, function and
@@ -1610,15 +1608,18 @@ async function trySyncPendingCheckins(){
    flexion with a "not yet allowed" answer; strength is asked from week 12,
    when resisted work begins. Items not asked are sent blank and score 0. */
 const UCLA_WEEKS = [2, 6, 12, 24];
-const UCLA_LATE_DAYS = 7; // after its week, a missed questionnaire stays on the Home card this long (no popup)
+const UCLA_LATE_DAYS = 7; // after its week, a missed check-in stays on the Progress tab this long (no popup)
 const UCLA_MAX = 35;
-let uclaDraft = null; // { week, step, answers:{item: optionIndex} } while the questionnaire is open
+const UCLA_ITEM_MAX = { pain:10, function:10, forwardFlexion:5, strength:5, satisfaction:5 };
+let uclaDraft = null; // { week, step, pain, exIds:[], answers:{item: optionIndex} } while the popup is open
 
 function uclaItemsFor(week){
   if(week <= 2) return ['pain','function','satisfaction'];
   if(week <= 6) return ['pain','function','forwardFlexion','satisfaction'];
   return ['pain','function','forwardFlexion','strength','satisfaction'];
 }
+// The popup's steps: the diary part first, then the questionnaire.
+function followupSteps(week){ return ['painToday','exercises'].concat(uclaItemsFor(week)); }
 
 // Options shown for an item at a given week. Same order in both languages, so
 // a stored option index means the same answer whichever language is on.
@@ -1628,10 +1629,10 @@ function uclaOptionsFor(item, week, lang){
   return q.opts;
 }
 
-// What the questionnaire schedule means today:
-//   due      — inside a questionnaire week (days 14–20, 42–48, 84–90, 168–174)
+// What the schedule means today:
+//   due      — inside a check-in week (days 14–20, 42–48, 84–90, 168–174)
 //   late     — that week has passed without an answer, but it can still be done
-//   upcoming — the next questionnaire week hasn't started yet
+//   upcoming — the next check-in week hasn't started yet
 //   finished — past the last one
 function uclaStatus(){
   const offset = daySinceOffset();
@@ -1650,9 +1651,24 @@ function uclaDateLabel(offset){
   d.setDate(d.getDate() + offset);
   return d.toLocaleDateString(STATE.lang === 'th' ? 'th-TH' : 'en-GB', { day:'numeric', month:'short' });
 }
+function isoDateLabel(iso){
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d) ? '' : d.toLocaleDateString(STATE.lang === 'th' ? 'th-TH' : 'en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
 
 function fill(template, values){
   return template.replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m));
+}
+
+function phaseExercises(){
+  const c = CONTENT[STATE.lang];
+  const phaseIdx = currentPhaseIndex(daySinceOffset());
+  return EXERCISE_SOURCES[phaseIdx].flatMap(src => c.exercises[src]);
+}
+
+function checkinForWeek(week){
+  for(const k in STATE.checkins){ if(STATE.checkins[k].timepointWeek === week) return STATE.checkins[k]; }
+  return null;
 }
 
 // Side-view figure with the operated arm raised to `deg` from the side of the body.
@@ -1668,42 +1684,10 @@ function uclaArmFigure(deg){
   </svg>`;
 }
 
-function renderUclaCard(){
-  const card = document.getElementById('ucla-card');
-  if(!card) return;
-  const c = CONTENT[STATE.lang];
-  const st = uclaStatus();
-  card.classList.toggle('hidden', !st);
-  if(!st) return;
-
-  let html = '';
-  if((st.state === 'due' && !STATE.ucla[st.week]) || st.state === 'late'){
-    const msg = st.state === 'due' ? fill(c.uclaCardDue, { w:st.week })
-                                   : fill(c.uclaCardLate, { w:st.week, date:uclaDateLabel(st.lastOffset) });
-    html += `<p class="ucla-card-msg">${msg}</p>
-      <button class="primary-btn" onclick="openUcla(${st.week})">${c.uclaCardStart}</button>`;
-  } else if(st.state === 'upcoming'){
-    html += `<p class="ucla-card-msg">${fill(c.uclaCardNext, { w:st.week, date:uclaDateLabel(st.startOffset) })}</p>`;
-  } else if(st.state === 'finished' && UCLA_WEEKS.every(w => STATE.ucla[w])){
-    html += `<p class="ucla-card-msg">${c.uclaCardAllDone}</p>`;
-  }
-
-  const done = UCLA_WEEKS.filter(w => STATE.ucla[w]);
-  if(done.length){
-    html += `<div class="ucla-history">` + done.map(w => {
-      const e = STATE.ucla[w];
-      return `<div class="ucla-history-row"><span>✓ ${fill(c.uclaHistoryRow, { w })}</span><b>${e.total}/${UCLA_MAX}</b></div>`
-        + (e.synced ? '' : `<div class="ucla-history-note">${c.checkinNotSyncedNote}</div>`);
-    }).join('') + `</div>`;
-  }
-  html += `<div class="ucla-schedule">${c.uclaCardSchedule}</div>`;
-  document.getElementById('ucla-card-body').innerHTML = html;
-}
-
 function isShown(id){ return !document.getElementById(id).classList.contains('hidden'); }
 
-// Opens the questionnaire by itself once a day during a questionnaire week,
-// until it's answered. Never on top of setup or the Add-to-Home prompt.
+// Opens the check-in by itself once a day during a check-in week, until it's
+// done — on the Progress tab. Never on top of setup or the Add-to-Home prompt.
 function maybeShowUclaPopup(){
   if(!STATE.consentGiven || !STATE.hn) return;
   const st = uclaStatus();
@@ -1712,12 +1696,14 @@ function maybeShowUclaPopup(){
   if(isShown('onboard') || isShown('addhome-modal') || isShown('ucla-modal')) return;
   STATE.uclaPromptedOn = todayISO();
   saveState();
+  if(!document.getElementById('view-progress').classList.contains('active')) switchTab('progress');
   openUcla(st.week);
 }
 
 function openUcla(week){
   if(!STATE.consentGiven){ openOnboard(true); return; }
-  uclaDraft = { week, step:-1, answers:{} };
+  const exIds = phaseExercises().map(e => e.id).filter(id => STATE.doneIds.includes(id));
+  uclaDraft = { week, step:-1, pain:null, exIds, answers:{} };
   document.getElementById('ucla-modal').classList.remove('hidden');
   renderUcla();
 }
@@ -1725,21 +1711,21 @@ function openUcla(week){
 function closeUcla(){
   uclaDraft = null;
   document.getElementById('ucla-modal').classList.add('hidden');
-  renderUclaCard();
+  renderProgress();
 }
 
 function renderUcla(){
   if(!uclaDraft) return;
   const c = CONTENT[STATE.lang];
   const { week, step } = uclaDraft;
-  const items = uclaItemsFor(week);
+  const steps = followupSteps(week);
   const el = document.getElementById('ucla-modal-body');
 
   if(step === -1){
     el.innerHTML = `
       <div class="ucla-intro-icon">📋</div>
-      <h1 style="text-align:center;">${c.uclaIntroTitle}</h1>
-      <p class="ucla-intro-text">${fill(c.uclaIntroText, { w:week, n:items.length })}</p>
+      <h1 style="text-align:center;">${fill(c.fuIntroTitle, { w:week })}</h1>
+      <p class="ucla-intro-text">${fill(c.fuIntroText, { w:week, n:steps.length })}</p>
       <button class="primary-btn" onclick="uclaGo(0)">${c.uclaStart}</button>
       <button class="skip-link" onclick="closeUcla()">${c.uclaLater}</button>`;
     return;
@@ -1747,6 +1733,8 @@ function renderUcla(){
 
   if(step === 'done'){
     const e = STATE.ucla[week];
+    const ci = checkinForWeek(week);
+    const synced = e.synced && (!ci || ci.synced);
     el.innerHTML = `
       <div class="ucla-intro-icon">✅</div>
       <h1 style="text-align:center;">${c.uclaThanksTitle}</h1>
@@ -1756,32 +1744,56 @@ function renderUcla(){
         <div class="ucla-score-big">${e.total} <small>/ ${UCLA_MAX}</small></div>
       </div>
       ${week <= 6 ? `<p class="ucla-sub" style="text-align:center;">${c.uclaEarlyNote}</p>` : ''}
-      ${e.synced ? '' : `<p class="ucla-history-note" style="text-align:center;">${c.checkinNotSyncedNote}</p>`}
-      <button class="primary-btn" onclick="closeUcla()">${c.uclaClose}</button>`;
+      ${synced ? '' : `<p class="ucla-history-note" style="text-align:center;">${c.checkinNotSyncedNote}</p>`}
+      <button class="primary-btn" onclick="closeUcla()">${c.fuSeeProgress}</button>`;
     return;
   }
 
-  const item = items[step];
-  const q = c.uclaQuestions[item];
-  const chosen = uclaDraft.answers[item];
-  const opts = uclaOptionsFor(item, week);
-  const pct = Math.round((step + 1) / items.length * 100);
-  const isLast = step === items.length - 1;
+  const item = steps[step];
+  const pct = Math.round((step + 1) / steps.length * 100);
+  const isLast = step === steps.length - 1;
+  let inner = '';
+  if(item === 'painToday'){
+    inner = `
+      <h1 class="ucla-q">${c.fuPainQ}</h1>
+      <p class="ucla-sub">${c.fuPainSub}</p>
+      <div class="fu-pain-grid" role="radiogroup">` + Array.from({length:11}, (_, v) => {
+        const col = painColor(v), sel = uclaDraft.pain === v;
+        const style = sel ? `background:${col.text};border-color:${col.text};color:#fff;`
+                          : `background:${col.bg};border-color:${col.border};color:${col.text};`;
+        return `<button class="fu-pain-btn ${sel ? 'selected' : ''}" style="${style}" role="radio" aria-checked="${sel}" onclick="fuPickPain(${v})">${v}</button>`;
+      }).join('') + `</div>
+      <div class="pain-scale-labels" style="font-size:13px;margin-top:8px;"><span>${c.checkinNoPain}</span><span>${c.checkinWorstPain}</span></div>`;
+  } else if(item === 'exercises'){
+    inner = `
+      <h1 class="ucla-q">${c.fuExQ}</h1>
+      <p class="ucla-sub">${c.fuExSub}</p>
+      <div class="ucla-opts">` + phaseExercises().map(ex => {
+        const on = uclaDraft.exIds.includes(ex.id);
+        return `<button class="ucla-opt ${on ? 'selected' : ''}" role="checkbox" aria-checked="${on}" onclick="fuToggleEx('${ex.id}')">
+          <span class="radio check"></span><span>${ex.name}</span></button>`;
+      }).join('') + `</div>`;
+  } else {
+    const q = c.uclaQuestions[item];
+    const chosen = uclaDraft.answers[item];
+    const opts = uclaOptionsFor(item, week);
+    inner = `
+      <h1 class="ucla-q">${q.q}</h1>
+      <p class="ucla-sub">${q.sub}</p>
+      ${item === 'forwardFlexion' && week <= 6 ? `<p class="ucla-caution">⚠️ ${q.caution}</p>` : ''}
+      <div class="ucla-opts" role="radiogroup">` + opts.map((o, i) => `
+        <button class="ucla-opt ${chosen === i ? 'selected' : ''}" role="radio" aria-checked="${chosen === i}" onclick="uclaPick(${i})">
+          <span class="radio"></span>
+          ${item === 'forwardFlexion' && !o.notYet ? uclaArmFigure(o.deg) : ''}
+          <span>${o.t}</span>
+        </button>`).join('') + `</div>`;
+  }
   el.innerHTML = `
     <div class="ucla-progress">
-      <span class="ucla-progress-text">${fill(c.uclaProgress, { i:step + 1, n:items.length })}</span>
+      <span class="ucla-progress-text">${fill(c.uclaProgress, { i:step + 1, n:steps.length })}</span>
       <span class="ucla-progress-bar"><i style="width:${pct}%"></i></span>
     </div>
-    <h1 class="ucla-q">${q.q}</h1>
-    <p class="ucla-sub">${q.sub}</p>
-    ${item === 'forwardFlexion' && week <= 6 ? `<p class="ucla-caution">⚠️ ${q.caution}</p>` : ''}
-    <div class="ucla-opts" role="radiogroup">` + opts.map((o, i) => `
-      <button class="ucla-opt ${chosen === i ? 'selected' : ''}" role="radio" aria-checked="${chosen === i}" onclick="uclaPick(${i})">
-        <span class="radio"></span>
-        ${item === 'forwardFlexion' && !o.notYet ? uclaArmFigure(o.deg) : ''}
-        <span>${o.t}</span>
-      </button>`).join('') + `
-    </div>
+    ${inner}
     <div class="ucla-validation" id="ucla-validation"></div>
     <div class="ucla-nav">
       <button class="ucla-back-btn" onclick="uclaGo(${step - 1})">${c.uclaBack}</button>
@@ -1795,31 +1807,63 @@ function uclaGo(step){
   renderUcla();
   document.querySelector('#ucla-modal .onboard-card').scrollTop = 0;
 }
-
+function fuPickPain(v){ uclaDraft.pain = v; renderUcla(); }
+function fuToggleEx(id){
+  const i = uclaDraft.exIds.indexOf(id);
+  if(i >= 0) uclaDraft.exIds.splice(i, 1); else uclaDraft.exIds.push(id);
+  renderUcla();
+}
 function uclaPick(i){
-  const item = uclaItemsFor(uclaDraft.week)[uclaDraft.step];
+  const item = followupSteps(uclaDraft.week)[uclaDraft.step];
   uclaDraft.answers[item] = i;
   renderUcla();
 }
 
 function uclaNext(){
-  const items = uclaItemsFor(uclaDraft.week);
-  const item = items[uclaDraft.step];
-  if(uclaDraft.answers[item] === undefined){
+  const steps = followupSteps(uclaDraft.week);
+  const item = steps[uclaDraft.step];
+  const missing = item === 'painToday' ? uclaDraft.pain === null
+                : item === 'exercises' ? false
+                : uclaDraft.answers[item] === undefined;
+  if(missing){
     document.getElementById('ucla-validation').textContent = t('uclaValidation');
     return;
   }
-  if(uclaDraft.step < items.length - 1) uclaGo(uclaDraft.step + 1);
+  if(uclaDraft.step < steps.length - 1) uclaGo(uclaDraft.step + 1);
   else submitUcla();
 }
 
 async function submitUcla(){
+  if(checkDayRollover()) saveState(); // left open past midnight: date the record today, not yesterday
+  const c = CONTENT[STATE.lang];
   const week = uclaDraft.week;
   const items = uclaItemsFor(week);
+  const today = todayISO();
+  const now = new Date().toISOString();
+
+  // The diary part: same record the daily check-in used to send.
+  const phaseIdx = currentPhaseIndex(daySinceOffset());
+  const exList = phaseExercises();
+  const done = exList.filter(e => uclaDraft.exIds.includes(e.id));
+  const listIds = new Set(exList.map(e => e.id));
+  STATE.doneIds = STATE.doneIds.filter(id => !listIds.has(id)).concat(done.map(e => e.id)); // keep the Exercises tab in step
+  const checkin = {
+    date: today, submittedAt: now,
+    hn: STATE.hn || "", surgeryDate: STATE.surgeryDate || "",
+    phase: c.phaseNames[phaseIdx] + " - " + c.phaseTitles[phaseIdx],
+    painScore: uclaDraft.pain,
+    exercisesDoneCount: done.length,
+    exercisesTotalCount: exList.length,
+    exercisesDoneNames: done.map(e => e.name).join("; "),
+    timepointWeek: week,
+    synced:false, syncFailed:false,
+  };
+  STATE.checkins[today] = checkin;
+
   const entry = {
     timepointWeek: week,
-    date: todayISO(),
-    submittedAt: new Date().toISOString(),
+    date: today,
+    submittedAt: now,
     surgeryDate: STATE.surgeryDate || "",
     daysPostOp: Math.max(0, daySinceOffset() || 0),
     pain:null, function:null, forwardFlexion:null, strength:null, satisfaction:null,
@@ -1838,10 +1882,190 @@ async function submitUcla(){
   STATE.ucla[week] = entry;
   saveState();
   uclaGo('done');
-  renderUclaCard();
+  renderProgress();
+  renderExerciseList();
+  await syncRecord(checkin, 'checkin');
   await syncRecord(entry, 'ucla');
-  renderUclaCard();
+  renderProgress();
   if(uclaDraft && uclaDraft.step === 'done') renderUcla();
+}
+
+/* ----------------------------- Progress tab ----------------------------- */
+// Items asked at both weeks, so a later week's extra questions don't look like improvement.
+function comparableScores(a, b){
+  let x = 0, y = 0, n = 0;
+  for(const item of Object.keys(UCLA_ITEM_MAX)){
+    if(a[item] === null || a[item] === undefined || b[item] === null || b[item] === undefined) continue;
+    x += a[item]; y += b[item]; n++;
+  }
+  return n ? { before:x, after:y } : null;
+}
+
+function careSuggestions(){
+  const c = CONTENT[STATE.lang];
+  const tips = []; // { text, warn }
+  const doneWeeks = UCLA_WEEKS.filter(w => STATE.ucla[w]);
+  const latestWeek = doneWeeks[doneWeeks.length - 1];
+  if(latestWeek){
+    const e = STATE.ucla[latestWeek];
+    const ci = checkinForWeek(latestWeek);
+    if(ci && ci.painScore >= 7) tips.push({ text:fill(c.careTips.painHigh, { p:ci.painScore }), warn:true });
+    if(e.satisfaction === 0) tips.push({ text:c.careTips.notSatisfied, warn:true });
+    const prevWeek = doneWeeks[doneWeeks.length - 2];
+    if(prevWeek){
+      const cmp = comparableScores(STATE.ucla[prevWeek], e);
+      if(cmp){
+        const key = cmp.after > cmp.before ? 'improved' : cmp.after < cmp.before ? 'worse' : 'same';
+        tips.push({ text:fill(c.careTips[key], { w:prevWeek, a:cmp.before, b:cmp.after }), warn:key === 'worse' });
+      }
+    }
+    if(ci && ci.exercisesTotalCount > 0){
+      if(ci.exercisesDoneCount === ci.exercisesTotalCount) tips.push({ text:c.careTips.exAll });
+      else if(ci.exercisesDoneCount * 2 < ci.exercisesTotalCount) tips.push({ text:c.careTips.exLow });
+    }
+    if(ci && ci.painScore >= 4 && ci.painScore <= 6) tips.push({ text:fill(c.careTips.painMid, { p:ci.painScore }) });
+    if(ci && ci.painScore <= 3) tips.push({ text:fill(c.careTips.painLow, { p:ci.painScore }) });
+  }
+  const phaseIdx = currentPhaseIndex(daySinceOffset());
+  (c.careTips.phase[phaseIdx] || []).forEach(text => tips.push({ text }));
+  return tips;
+}
+
+// One small single-series chart per measure (never two y-scales on one chart).
+// The four check-in weeks sit at fixed positions, so gaps stay visible.
+function progressChart(values, max, title){
+  // Points sit at the centre of four equal columns, so the week/value row
+  // underneath lines up with them and doubles as the x-axis and a table view.
+  const W = 320, H = 118, T = 16, B = 8;
+  const x = i => (i + 0.5) * W / UCLA_WEEKS.length;
+  const y = v => T + (1 - v / max) * (H - T - B);
+  const c = CONTENT[STATE.lang];
+  const ticks = max === 10 ? [0, 5, 10] : [0, 10, 20, 30];
+  const grid = ticks.map(g => `<line x1="0" x2="${W}" y1="${y(g)}" y2="${y(g)}" stroke="#E6E9EF" stroke-width="1"/>
+      <text x="2" y="${y(g) - 3}" font-size="9.5" fill="#6B7280">${g}</text>`).join('');
+  const pts = UCLA_WEEKS.map((w, i) => values[i] === null ? null : { i, w, v:values[i] }).filter(Boolean);
+  let line = '';
+  for(let k = 1; k < pts.length; k++){
+    line += `<line x1="${x(pts[k-1].i)}" y1="${y(pts[k-1].v)}" x2="${x(pts[k].i)}" y2="${y(pts[k].v)}" stroke="#2E7D6E" stroke-width="2" stroke-linecap="round"/>`;
+  }
+  const last = pts[pts.length - 1];
+  const dots = pts.map(p => `<g><title>${fill(c.progWeekShort, { w:p.w })}: ${p.v}</title>
+      <circle cx="${x(p.i)}" cy="${y(p.v)}" r="12" fill="transparent"/>
+      <circle cx="${x(p.i)}" cy="${y(p.v)}" r="5" fill="#2E7D6E" stroke="#fff" stroke-width="2"/></g>`).join('');
+  const lastLabel = last ? `<text x="${x(last.i)}" y="${y(last.v) - 9}" text-anchor="middle" font-size="11" font-weight="700" fill="#232323">${last.v}</text>` : '';
+  const table = `<div class="prog-values">` + UCLA_WEEKS.map((w, i) =>
+    `<div><span>${fill(c.progWeekShort, { w })}</span><b>${values[i] === null ? '–' : values[i]}</b></div>`).join('') + `</div>`;
+  return `<div class="prog-chart">
+    <div class="prog-chart-title">${title}</div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">${grid}${line}${dots}${lastLabel}</svg>
+    ${table}
+  </div>`;
+}
+
+function renderProgress(){
+  const el = document.getElementById('progress-body');
+  if(!el) return;
+  const c = CONTENT[STATE.lang];
+  const offset = daySinceOffset();
+
+  if(offset === null){
+    el.innerHTML = `<div class="card"><h2>${c.progTitle}</h2><p class="prog-text">${c.progNoDate}</p></div>`;
+    return;
+  }
+  if(offset < 0){
+    el.innerHTML = `<div class="card"><h2>${c.progTitle}</h2>
+      <p class="prog-text">${fill(c.progPreop, { date:uclaDateLabel(14) })}</p>
+      <p class="prog-muted">${c.progSchedule}</p></div>`;
+    return;
+  }
+
+  const st = uclaStatus();
+  const phaseIdx = currentPhaseIndex(offset);
+  let html = '';
+
+  // Status
+  let next = '';
+  if(st.state === 'upcoming') next = fill(c.progNext, { w:st.week, date:uclaDateLabel(st.startOffset) });
+  else if(st.state === 'finished' && UCLA_WEEKS.every(w => STATE.ucla[w])) next = c.progAllDone;
+  else if(st.state === 'due' && STATE.ucla[st.week]){
+    const nw = UCLA_WEEKS[UCLA_WEEKS.indexOf(st.week) + 1];
+    if(nw) next = fill(c.progNext, { w:nw, date:uclaDateLabel(nw * 7) });
+    else next = c.progAllDone;
+  }
+  html += `<div class="card">
+    <h2>${c.progTitle}</h2>
+    <div class="prog-status">
+      <div class="prog-day">${fill(c.progDayLine, { d:offset + 1 })}</div>
+      <div class="prog-phase">${c.phaseNames[phaseIdx]} · ${c.phaseTitles[phaseIdx]}</div>
+    </div>
+    ${next ? `<p class="prog-text">${next}</p>` : ''}
+    <p class="prog-muted">${c.progSchedule}</p>
+  </div>`;
+
+  // Check-in waiting (only while not yet done)
+  if((st.state === 'due' && !STATE.ucla[st.week]) || st.state === 'late'){
+    html += `<div class="card prog-due">
+      <h2>${fill(c.progDueTitle, { w:st.week })}</h2>
+      <p class="prog-text">${c.progDueText}</p>
+      ${st.state === 'late' ? `<p class="prog-muted">${fill(c.progLateText, { date:uclaDateLabel(st.lastOffset) })}</p>` : ''}
+      <button class="primary-btn" onclick="openUcla(${st.week})">${c.progStart}</button>
+    </div>`;
+  }
+
+  // Latest results
+  const doneWeeks = UCLA_WEEKS.filter(w => STATE.ucla[w]);
+  if(doneWeeks.length){
+    const w = doneWeeks[doneWeeks.length - 1];
+    const e = STATE.ucla[w];
+    const ci = checkinForWeek(w);
+    const synced = e.synced && (!ci || ci.synced);
+    html += `<div class="card">
+      <h2>${fill(c.progResultsTitle, { w })}</h2>
+      <div class="prog-muted" style="margin-bottom:12px;">${fill(c.progAnswered, { date:isoDateLabel(e.date) })}</div>
+      <div class="prog-tiles">
+        <div class="prog-tile"><div class="prog-tile-num">${e.total}<small>/${UCLA_MAX}</small></div><div class="prog-tile-label">${c.uclaScoreLabel}</div></div>
+        <div class="prog-tile"><div class="prog-tile-num">${ci ? ci.painScore : '–'}<small>/10</small></div><div class="prog-tile-label">${c.progPainLabel}</div></div>
+        <div class="prog-tile"><div class="prog-tile-num">${ci ? ci.exercisesDoneCount : '–'}<small>/${ci ? ci.exercisesTotalCount : '–'}</small></div><div class="prog-tile-label">${c.progExLabel}</div></div>
+      </div>
+      <div class="prog-sub-title">${c.progBreakdownTitle}</div>
+      ${Object.keys(UCLA_ITEM_MAX).map(item => {
+        const v = e[item], max = UCLA_ITEM_MAX[item];
+        const asked = v !== null && v !== undefined;
+        return `<div class="prog-bar-row">
+          <span class="prog-bar-name">${c.progItemNames[item]}</span>
+          <span class="prog-bar-track">${asked ? `<i style="width:${Math.round(v / max * 100)}%"></i>` : ''}</span>
+          <span class="prog-bar-val">${asked ? v + '/' + max : c.progNotAskedYet}</span>
+        </div>`;
+      }).join('')}
+      ${w <= 6 ? `<p class="prog-muted" style="margin-top:10px;">${c.uclaEarlyNote}</p>` : ''}
+      ${synced ? '' : `<p class="ucla-history-note">${c.checkinNotSyncedNote}</p>`}
+    </div>`;
+  }
+
+  // Progression
+  const timeline = UCLA_WEEKS.map(w => {
+    let cls = 'upcoming', txt = uclaDateLabel(w * 7);
+    if(STATE.ucla[w]){ cls = 'done'; txt = '✓ ' + STATE.ucla[w].total + '/' + UCLA_MAX; }
+    else if(st.week === w && (st.state === 'due' || st.state === 'late')){ cls = 'now'; txt = c.progTimelineDue; }
+    else if(offset > w * 7 + 6){ cls = 'missed'; txt = c.progTimelineMissed; }
+    return `<div class="prog-step ${cls}"><div class="prog-step-week">${fill(c.progWeekShort, { w })}</div><div class="prog-step-val">${txt}</div></div>`;
+  }).join('');
+  html += `<div class="card"><h2>${c.progTrendTitle}</h2><div class="prog-timeline">${timeline}</div>`;
+  if(doneWeeks.length){
+    html += progressChart(UCLA_WEEKS.map(w => STATE.ucla[w] ? STATE.ucla[w].total : null), UCLA_MAX, c.progChartUcla);
+    const pains = UCLA_WEEKS.map(w => { const ci = checkinForWeek(w); return ci ? ci.painScore : null; });
+    if(pains.some(v => v !== null)) html += progressChart(pains, 10, c.progChartPain);
+  }
+  html += `</div>`;
+
+  // Care suggestions
+  const tips = careSuggestions();
+  if(tips.length){
+    html += `<div class="card"><h2>${c.progCareTitle}</h2><div class="care-tips">` +
+      tips.map(tp => `<div class="care-tip ${tp.warn ? 'warn' : ''}"><span class="care-tip-icon">${tp.warn ? '⚠️' : '✓'}</span><span>${tp.text}</span></div>`).join('') +
+      `</div></div>`;
+  }
+  el.innerHTML = html;
 }
 
 /* ============================= RENDER: CARE ============================= */
@@ -1912,6 +2136,10 @@ function renderExercisePhaseTabs(){
     if(i===activeIdx && offset!==null) cls.push('is-current');
     return `<button class="${cls.join(' ')}" onclick="selectExPhase(${i})">${name}${i===activeIdx && offset!==null ? '<span class="phase-tab-dot"></span>' : ''}</button>`;
   }).join('');
+  // On a narrow phone the later phases sit past the right edge of this
+  // scrolling strip — bring the selected one into view.
+  const sel = tabs.querySelector('.phase-tab.active');
+  if(sel) tabs.scrollLeft = Math.max(0, sel.offsetLeft - tabs.offsetLeft - (tabs.clientWidth - sel.offsetWidth) / 2);
 }
 function selectExPhase(i){ currentExPhase = i; renderExerciseList(); renderExercisePhaseTabs(); }
 
@@ -2049,7 +2277,7 @@ function renderSOS(){
 
 /* ============================= TABS ============================= */
 function switchTab(tab){
-  if(checkDayRollover()){ selectedPain = null; saveState(); }
+  if(checkDayRollover()) saveState();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
@@ -2061,6 +2289,10 @@ function switchTab(tab){
     currentExPhase = null;
     renderExercisePhaseTabs();
     renderExerciseList();
+  }
+  if(tab==='progress'){
+    renderProgress();
+    maybeShowUclaPopup(); // the check-in lives here; opens itself once a day in a check-in week
   }
 }
 
@@ -2151,6 +2383,7 @@ function renderAll(){
   renderPrivacy();
   renderResources();
   renderSOS();
+  renderProgress();
   if(uclaDraft) renderUcla(); // e.g. language switched while it's open
 }
 
