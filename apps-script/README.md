@@ -80,11 +80,13 @@ under it from their own phone. To contain that:
 
 ## UCLA shoulder questionnaire (`UCLA` tab)
 
-The app asks each patient to fill in the UCLA shoulder rating scale at
-**2, 6, 12 and 24 weeks** after surgery. During each of those weeks (days
-14–20, 42–48, 84–90 and 168–174 after the surgery date) it pops up once a day
-until it is answered. If the week is missed, the Home screen keeps offering it
-for 7 more days, without the popup.
+Patients check in at **2, 6, 12 and 24 weeks** after surgery only (there is
+no daily check-in). During each of those weeks (days 14–20, 42–48, 84–90 and
+168–174 after the surgery date) the check-in pops up on the app's Progress tab
+once a day until it is done. It asks pain today (0–10) and which exercises
+were done today — one row in `CheckIns` — then the UCLA shoulder rating
+scale — one row here. If the week is missed, the Progress tab keeps offering
+it for 7 more days, without the popup.
 
 What is asked depends on what the patient is allowed to do at that point:
 
