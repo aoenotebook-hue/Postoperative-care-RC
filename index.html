@@ -8,7 +8,7 @@
 <meta name="application-name" content="ผ่าตัดเอ็นหัวไหล่">
 <meta name="theme-color" content="#1F3864">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="images/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="images/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -251,8 +251,20 @@
     display:flex;align-items:center;justify-content:center;padding:20px;
   }
   #addhome-modal.hidden{display:none;}
-  .addhome-icon{font-size:38px;text-align:center;margin-bottom:6px;}
-  .addhome-steps-text{font-size:13.5px;color:var(--text);background:#F5F7FA;border-radius:12px;padding:14px;line-height:1.5;text-align:center;margin:4px 0 14px;}
+  .addhome-app-icon{display:block;width:64px;height:64px;border-radius:15px;margin:0 auto 10px;box-shadow:0 2px 8px rgba(20,30,50,.18);}
+  .addhome-lead{font-size:15px;line-height:1.55;color:#444;text-align:center;margin:0 0 16px;}
+  .addhome-steps{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:10px;}
+  .addhome-steps li{display:flex;gap:12px;align-items:flex-start;background:#F5F7FA;border-radius:14px;padding:12px 14px;font-size:15.5px;line-height:1.5;color:var(--text);}
+  .addhome-num{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .addhome-ico{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#fff;border:1.5px solid var(--border);vertical-align:middle;margin:0 3px;color:#0A84FF;}
+  .addhome-ico svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .addhome-ico.dots svg{fill:currentColor;stroke:none;}
+  .addhome-note{font-size:13px;line-height:1.5;color:var(--muted);text-align:center;margin:0 0 6px;}
+  .addhome-copied{font-size:13px;color:var(--teal);font-weight:700;text-align:center;min-height:18px;margin-top:6px;}
+  .addhome-card{display:flex;gap:14px;align-items:center;}
+  .addhome-card img{width:52px;height:52px;border-radius:12px;flex-shrink:0;box-shadow:0 1px 5px rgba(20,30,50,.15);}
+  .addhome-card-text{font-size:14px;line-height:1.5;color:#333;}
+  .addhome-card-text b{display:block;color:var(--navy);font-size:15px;}
 
   /* ---------- UCLA shoulder questionnaire ---------- */
   #ucla-modal{
@@ -368,6 +380,15 @@
           <div class="ring-phase-desc" id="ring-phase-desc"></div>
           <button class="edit-date" onclick="openOnboard(true)" data-t="editDate">Edit surgery date</button>
         </div>
+      </div>
+
+      <div class="card hidden" id="addhome-card">
+        <div class="addhome-card">
+          <img src="images/icon-192.png" alt="">
+          <div class="addhome-card-text"><b data-t="addHomeCardTitle">Put the app on your home screen</b><span data-t="addHomeCardText">Open it with one tap, like any other app.</span></div>
+        </div>
+        <button class="primary-btn" onclick="openAddHome()" data-t="addHomeCardBtn">Show me how</button>
+        <button class="skip-link" onclick="hideAddHomeCard()" data-t="addHomeCardDone">I've already done this</button>
       </div>
 
       <div class="card">
@@ -521,20 +542,10 @@
   </div>
 </div>
 
-<!-- Add to Home Screen prompt -->
+<!-- Add to Home Screen prompt: steps for the phone and browser actually in use -->
 <div id="addhome-modal" class="hidden">
-  <div class="onboard-card" style="max-width:360px;">
-    <div class="addhome-icon">📲</div>
-    <h1 data-t="addHomeTitle" style="text-align:center;">Add to Home Screen?</h1>
-    <p class="lead" data-t="addHomeBody" style="text-align:center;">Add this app to your home screen for one-tap access anytime, just like a regular app.</p>
-    <div id="addhome-buttons">
-      <button class="primary-btn" onclick="acceptAddHome()" data-t="addHomeAccept">Add to Home Screen</button>
-      <button class="skip-link" onclick="closeAddHomePrompt()" data-t="addHomeDecline">Not Now</button>
-    </div>
-    <div id="addhome-steps" class="hidden">
-      <p class="addhome-steps-text" id="addhome-steps-text"></p>
-      <button class="primary-btn" onclick="closeAddHomePrompt()" data-t="addHomeGotIt">Got it</button>
-    </div>
+  <div class="onboard-card" style="max-width:400px;" role="dialog" aria-modal="true">
+    <div id="addhome-body"></div>
   </div>
 </div>
 
@@ -666,6 +677,47 @@ en: {
   fuExSub:"Tap each one you've done today. If you haven't done any yet, just tap Next.",
   fuSeeProgress:"See my progress",
   fuNewDay:"A new day has started — please answer today's pain and exercises again. Your other answers are kept.",
+  /* Add to home screen */
+  addHomeTitle:"Add the app to your home screen",
+  addHomeLead:"Then you can open it with one tap, like any other app. No App Store or Play Store download needed.",
+  addHomeInstallBtn:"Add to home screen",
+  addHomeLater:"Not now",
+  addHomeGotIt:"Done",
+  addHomeIosSteps:[
+    "Tap the Share button {share}. It's in the bar at the bottom of Safari (at the top on an iPad). If you don't see it, tap {more} first.",
+    "Scroll down and tap \"Add to Home Screen\" {plus}",
+    "Tap \"Add\" in the top right corner."
+  ],
+  addHomeIosOtherSteps:[
+    "Tap the Share button {share}, next to the web address at the top or bottom of the screen. If you don't see it, tap {more} or {menu} first.",
+    "Tap \"Add to Home Screen\" {plus}",
+    "Tap \"Add\"."
+  ],
+  addHomeIosOtherNote:"If you can't find it, open this page in Safari and try there.",
+  addHomeAndroidSteps:[
+    "Tap the menu button {kebab} in the top right corner of Chrome.",
+    "Tap \"Add to Home screen\" or \"Install app\".",
+    "Tap \"Install\" or \"Add\" to confirm."
+  ],
+  addHomeSamsungSteps:[
+    "Tap the menu button {menu} in the bottom right corner.",
+    "Tap \"Add page to\", then \"Home screen\".",
+    "Tap \"Add\" to confirm."
+  ],
+  addHomeInAppLead:"This page is open inside {app}, which can't add apps to your home screen. Open it in {browser} first.",
+  addHomeThisApp:"another app",
+  addHomeOpenIn:"Open in {browser}",
+  addHomeThenAgain:"When it opens in {browser}, tap \"Show me how\" on the Home tab again.",
+  addHomeInAppStep1:"Tap {more} or {kebab} at the top or bottom right of the screen.",
+  addHomeInAppStep2:"Choose \"Open in browser\" (or \"Open in {browser}\"), then tap \"Show me how\" on the Home tab again.",
+  addHomeCopyLink:"Or copy the link to paste into {browser}",
+  addHomeCopied:"Link copied — open {browser} and paste it into the address bar.",
+  addHomeDesktop:"Open this page on your phone to add it to your home screen.",
+  addHomeAlready:"The app is already on your home screen.",
+  addHomeCardTitle:"Put the app on your home screen",
+  addHomeCardText:"Open it with one tap, like any other app.",
+  addHomeCardBtn:"Show me how",
+  addHomeCardDone:"I've already done this",
   tabHome:"Home", tabCare:"Care", tabExercises:"Exercises", tabSleep:"Sleep", tabSOS:"Alert",
   sosTitle:"When to Get Help", sosSub:"If you notice any of the signs below, contact your care team right away.",
   emergencyNote:"For a life-threatening emergency, call 1669 (Thailand emergency medical services) immediately.",
@@ -683,13 +735,6 @@ en: {
   dateRangeValidation:"Please double-check the date — it looks too far in the past or future. Check the year.",
   hnRequiredValidation:"Please enter your Hospital Number (HN) to continue.",
   hnRejectedValidation:"Please check your HN — use only the letters and numbers on your hospital card.",
-  addHomeTitle:"Add to Home Screen?",
-  addHomeBody:"Add this app to your home screen for one-tap access anytime, just like a regular app.",
-  addHomeAccept:"Add to Home Screen",
-  addHomeDecline:"Not Now",
-  addHomeGotIt:"Got it",
-  addHomeIOSSteps:"Tap the Share icon in your browser, then choose \"Add to Home Screen.\"",
-  addHomeGenericSteps:"Look for \"Add to Home Screen\" or \"Install App\" in your browser's menu.",
   onboardSave:"Save & Continue", onboardSkip:"Skip for now",
   noDateChip:"Set your surgery date",
   noDateDesc:"Tap \"Edit surgery date\" above so we can show your current recovery phase.",
@@ -998,6 +1043,47 @@ th: {
   fuExSub:"แตะเลือกทุกท่าที่ทำไปแล้ววันนี้ หากยังไม่ได้ทำ ให้กดถัดไปได้เลย",
   fuSeeProgress:"ดูความก้าวหน้าของฉัน",
   fuNewDay:"ขึ้นวันใหม่แล้ว กรุณาตอบความปวดและท่าบริหารของวันนี้อีกครั้ง คำตอบข้ออื่นยังเก็บไว้",
+  /* Add to home screen */
+  addHomeTitle:"เพิ่มแอปลงหน้าจอโฮม",
+  addHomeLead:"แล้วเปิดแอปได้ในแตะเดียวเหมือนแอปทั่วไป ไม่ต้องดาวน์โหลดจาก App Store หรือ Play Store",
+  addHomeInstallBtn:"เพิ่มลงหน้าจอโฮม",
+  addHomeLater:"ไว้ภายหลัง",
+  addHomeGotIt:"เสร็จแล้ว",
+  addHomeIosSteps:[
+    "แตะปุ่มแชร์ {share} ที่แถบด้านล่างของ Safari (บน iPad อยู่ด้านบน) หากไม่เห็น ให้แตะ {more} ก่อน",
+    "เลื่อนลง แล้วแตะ \"เพิ่มไปยังหน้าจอโฮม\" (Add to Home Screen) {plus}",
+    "แตะ \"เพิ่ม\" (Add) ที่มุมขวาบน"
+  ],
+  addHomeIosOtherSteps:[
+    "แตะปุ่มแชร์ {share} ข้างช่องที่อยู่เว็บ ด้านบนหรือด้านล่างของหน้าจอ หากไม่เห็น ให้แตะ {more} หรือ {menu} ก่อน",
+    "แตะ \"เพิ่มไปยังหน้าจอโฮม\" (Add to Home Screen) {plus}",
+    "แตะ \"เพิ่ม\" (Add)"
+  ],
+  addHomeIosOtherNote:"หากหาไม่พบ ให้เปิดหน้านี้ใน Safari แล้วลองอีกครั้ง",
+  addHomeAndroidSteps:[
+    "แตะปุ่มเมนู {kebab} ที่มุมขวาบนของ Chrome",
+    "แตะ \"เพิ่มลงในหน้าจอหลัก\" (Add to Home screen) หรือ \"ติดตั้งแอป\" (Install app)",
+    "แตะ \"ติดตั้ง\" (Install) หรือ \"เพิ่ม\" (Add) เพื่อยืนยัน"
+  ],
+  addHomeSamsungSteps:[
+    "แตะปุ่มเมนู {menu} ที่มุมขวาล่าง",
+    "แตะ \"เพิ่มหน้าไปยัง\" (Add page to) แล้วเลือก \"หน้าจอหลัก\" (Home screen)",
+    "แตะ \"เพิ่ม\" (Add) เพื่อยืนยัน"
+  ],
+  addHomeInAppLead:"หน้านี้เปิดอยู่ภายใน {app} ซึ่งเพิ่มแอปลงหน้าจอโฮมไม่ได้ กรุณาเปิดใน {browser} ก่อน",
+  addHomeThisApp:"แอปอื่น",
+  addHomeOpenIn:"เปิดใน {browser}",
+  addHomeThenAgain:"เมื่อเปิดใน {browser} แล้ว ให้แตะ \"ดูวิธีทำ\" ที่แท็บหน้าแรกอีกครั้ง",
+  addHomeInAppStep1:"แตะ {more} หรือ {kebab} ที่มุมขวาบนหรือขวาล่างของหน้าจอ",
+  addHomeInAppStep2:"เลือก \"เปิดในเบราว์เซอร์\" (Open in browser) หรือ \"เปิดใน {browser}\" แล้วแตะ \"ดูวิธีทำ\" ที่แท็บหน้าแรกอีกครั้ง",
+  addHomeCopyLink:"หรือคัดลอกลิงก์ไปวางใน {browser}",
+  addHomeCopied:"คัดลอกลิงก์แล้ว — เปิด {browser} แล้ววางในช่องที่อยู่เว็บ",
+  addHomeDesktop:"เปิดหน้านี้บนโทรศัพท์มือถือ เพื่อเพิ่มแอปลงหน้าจอโฮม",
+  addHomeAlready:"แอปอยู่บนหน้าจอโฮมของท่านแล้ว",
+  addHomeCardTitle:"เพิ่มแอปไว้บนหน้าจอโฮม",
+  addHomeCardText:"เปิดได้ในแตะเดียว เหมือนแอปทั่วไป",
+  addHomeCardBtn:"ดูวิธีทำ",
+  addHomeCardDone:"ทำแล้ว",
   tabHome:"หน้าแรก", tabCare:"การดูแล", tabExercises:"ท่าบริหาร", tabSleep:"การนอน", tabSOS:"ฉุกเฉิน",
   sosTitle:"เมื่อใดควรขอความช่วยเหลือ", sosSub:"หากพบอาการต่อไปนี้ ให้ติดต่อทีมผู้ดูแลทันที",
   emergencyNote:"หากเป็นเหตุฉุกเฉินที่อาจเป็นอันตรายถึงชีวิต โปรดโทร 1669 (สายด่วนการแพทย์ฉุกเฉิน) ทันที",
@@ -1015,13 +1101,6 @@ th: {
   dateRangeValidation:"กรุณาตรวจสอบวันที่อีกครั้ง — วันที่นี้ห่างจากปัจจุบันมากเกินไป โปรดตรวจสอบปี พ.ศ./ค.ศ. ที่กรอก",
   hnRequiredValidation:"กรุณากรอกหมายเลข HN ของท่านเพื่อดำเนินการต่อ",
   hnRejectedValidation:"กรุณาตรวจสอบหมายเลข HN — กรอกเฉพาะตัวอักษรและตัวเลขตามบัตรโรงพยาบาล",
-  addHomeTitle:"เพิ่มลงหน้าจอโฮมหรือไม่?",
-  addHomeBody:"เพิ่มแอปนี้ลงในหน้าจอโฮมของท่าน เพื่อเข้าใช้งานได้ทันทีเหมือนแอปทั่วไป",
-  addHomeAccept:"เพิ่มลงหน้าจอโฮม",
-  addHomeDecline:"ไว้ภายหลัง",
-  addHomeGotIt:"เข้าใจแล้ว",
-  addHomeIOSSteps:"แตะไอคอนแชร์ (Share) แล้วเลือก \"เพิ่มลงในหน้าจอโฮม\" (Add to Home Screen)",
-  addHomeGenericSteps:"มองหาเมนู \"เพิ่มลงหน้าจอโฮม\" หรือ \"ติดตั้งแอป\" ในเมนูเบราว์เซอร์ของท่าน",
   onboardSave:"บันทึกและดำเนินการต่อ", onboardSkip:"ข้ามไปก่อน",
   noDateChip:"กรุณาระบุวันที่ผ่าตัด",
   noDateDesc:"แตะ \"แก้ไขวันที่ผ่าตัด\" ด้านบน เพื่อให้เราแสดงระยะการฟื้นตัวปัจจุบันของท่าน",
@@ -1341,44 +1420,162 @@ const CHECKIN_API_URL = "./api/checkin";
 // How long a check-in is kept locally before it's pruned from device storage (minimize retention).
 const CHECKIN_RETENTION_DAYS = 400; // covers the full ~1-year recovery timeline with margin
 
-/* ============================= ADD TO HOME SCREEN ============================= */
+/* ============================= ADD TO HOME SCREEN =============================
+   There is no app-store install: the patient adds the web app to their home
+   screen. Each phone and browser does that differently, so the prompt works
+   out which one is in use and shows only its steps, with pictures of the
+   buttons to tap. Android Chrome (and most Android browsers) can show their
+   own install dialog, which is one tap; iPhone/iPad never can.
+   LINE, Facebook and other in-app browsers can't add to the home screen at
+   all — those get a way out to Safari/Chrome first. */
 let deferredInstallPrompt = null;
-const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const UA = navigator.userAgent;
+// iPadOS 13+ reports itself as a Mac; a touch screen gives it away.
+const IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_ANDROID = /Android/i.test(UA);
 const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
+  renderAddHomeCard();
+  if(isShown('addhome-modal')) renderAddHome();
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  STATE.appInstalled = true;
+  saveState();
+  renderAddHomeCard();
 });
 
-function maybeShowAddHomePrompt(){
-  if(IS_STANDALONE || STATE.homeScreenPromptShown) return;
+// Which instructions apply on this device.
+function installContext(){
+  if(IS_STANDALONE || STATE.appInstalled) return { kind:'installed' };
+  const inApp = /\bLine\//i.test(UA) ? 'LINE'
+              : /FBAN|FBAV|FB_IAB|FBIOS/i.test(UA) ? 'Facebook'
+              : /Instagram/i.test(UA) ? 'Instagram'
+              : /musical_ly|BytedanceWebview|TikTok/i.test(UA) ? 'TikTok'
+              : (IS_ANDROID && /; wv\)/.test(UA)) ? 'app' : null;
+  if(inApp) return { kind:'inapp', app:inApp };
+  if(deferredInstallPrompt) return { kind:'native' };
+  if(IS_IOS) return { kind: /CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(UA) ? 'ios-other' : 'ios-safari' };
+  if(IS_ANDROID) return { kind: /SamsungBrowser/i.test(UA) ? 'samsung' : 'android' };
+  return { kind:'desktop' };
+}
+
+const ADDHOME_ICONS = {
+  share:'<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M6 11v9h12v-9"/></svg>',
+  plus:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>',
+  more:'<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  kebab:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>',
+  menu:'<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>'
+};
+// "{share}" in a step becomes a picture of that button.
+function addHomeStepHtml(text){
+  return text.replace(/\{(share|plus|more|kebab|menu)\}/g, (m, k) =>
+    `<span class="addhome-ico ${k === 'more' || k === 'kebab' ? 'dots' : ''}" aria-hidden="true">${ADDHOME_ICONS[k]}</span>`);
+}
+function addHomeStepsList(steps){
+  return `<ol class="addhome-steps">` + steps.map((st, i) =>
+    `<li><span class="addhome-num">${i + 1}</span><span>${addHomeStepHtml(st)}</span></li>`).join('') + `</ol>`;
+}
+
+function renderAddHome(){
   const c = CONTENT[STATE.lang];
-  document.getElementById('addhome-steps').classList.add('hidden');
-  document.getElementById('addhome-buttons').classList.remove('hidden');
+  const ctx = installContext();
+  const browser = IS_IOS ? 'Safari' : 'Chrome';
+  let body = '';
+  if(ctx.kind === 'native'){
+    body = `<p class="addhome-lead">${c.addHomeLead}</p>
+      <button class="primary-btn" onclick="installNative()">${c.addHomeInstallBtn}</button>`;
+  } else if(ctx.kind === 'inapp'){
+    const app = ctx.app === 'app' ? c.addHomeThisApp : ctx.app;
+    body = `<p class="addhome-lead">${fill(c.addHomeInAppLead, { app, browser })}</p>`;
+    if(ctx.app === 'LINE'){
+      // LINE opens a link in the phone's own browser when it carries this parameter.
+      const url = location.origin + location.pathname + '?openExternalBrowser=1';
+      body += `<a class="primary-btn" style="display:block;text-align:center;text-decoration:none;" href="${url}">${fill(c.addHomeOpenIn, { browser })}</a>
+        <p class="addhome-note" style="margin-top:12px;">${fill(c.addHomeThenAgain, { browser })}</p>`;
+    } else {
+      body += addHomeStepsList([fill(c.addHomeInAppStep1, { browser }), fill(c.addHomeInAppStep2, { browser })]);
+    }
+    body += `<button class="skip-link" onclick="copyAppLink()">${fill(c.addHomeCopyLink, { browser })}</button>
+      <div class="addhome-copied" id="addhome-copied"></div>`;
+  } else if(ctx.kind === 'ios-safari'){
+    body = `<p class="addhome-lead">${c.addHomeLead}</p>` + addHomeStepsList(c.addHomeIosSteps);
+  } else if(ctx.kind === 'ios-other'){
+    body = `<p class="addhome-lead">${c.addHomeLead}</p>` + addHomeStepsList(c.addHomeIosOtherSteps)
+      + `<p class="addhome-note">${c.addHomeIosOtherNote}</p>`;
+  } else if(ctx.kind === 'samsung'){
+    body = `<p class="addhome-lead">${c.addHomeLead}</p>` + addHomeStepsList(c.addHomeSamsungSteps);
+  } else if(ctx.kind === 'android'){
+    body = `<p class="addhome-lead">${c.addHomeLead}</p>` + addHomeStepsList(c.addHomeAndroidSteps);
+  } else if(ctx.kind === 'desktop'){
+    body = `<p class="addhome-lead">${c.addHomeDesktop}</p>`;
+  } else {
+    body = `<p class="addhome-lead">${c.addHomeAlready}</p>`;
+  }
+  const closeLabel = (ctx.kind === 'native' || ctx.kind === 'inapp') ? c.addHomeLater : c.addHomeGotIt;
+  document.getElementById('addhome-body').innerHTML = `
+    <img class="addhome-app-icon" src="images/icon-192.png" alt="">
+    <h1 style="text-align:center;">${c.addHomeTitle}</h1>
+    ${body}
+    <button class="${ctx.kind === 'native' || ctx.kind === 'inapp' ? 'skip-link' : 'primary-btn'}" onclick="closeAddHomePrompt()">${closeLabel}</button>`;
+}
+
+function openAddHome(){
+  renderAddHome();
   document.getElementById('addhome-modal').classList.remove('hidden');
 }
 
-async function acceptAddHome(){
+// Shown once by itself, right after first-time setup; the Home card offers it after that.
+function maybeShowAddHomePrompt(){
+  if(STATE.homeScreenPromptShown) return;
+  const kind = installContext().kind;
+  if(kind === 'installed' || kind === 'desktop') return;
+  openAddHome();
+}
+
+async function installNative(){
+  if(!deferredInstallPrompt){ renderAddHome(); return; }
+  deferredInstallPrompt.prompt();
+  let outcome = null;
+  try{ outcome = (await deferredInstallPrompt.userChoice).outcome; }catch(e){}
+  deferredInstallPrompt = null; // a prompt can only be used once
+  if(outcome === 'accepted'){ STATE.appInstalled = true; saveState(); }
+  closeAddHomePrompt();
+}
+
+async function copyAppLink(){
   const c = CONTENT[STATE.lang];
-  if(deferredInstallPrompt){
-    deferredInstallPrompt.prompt();
-    try{ await deferredInstallPrompt.userChoice; }catch(e){}
-    deferredInstallPrompt = null;
-    closeAddHomePrompt();
-  } else {
-    // No native prompt available (iOS Safari, or browser doesn't support it) — show manual steps instead.
-    document.getElementById('addhome-steps-text').textContent = IS_IOS ? c.addHomeIOSSteps : c.addHomeGenericSteps;
-    document.getElementById('addhome-steps').classList.remove('hidden');
-    document.getElementById('addhome-buttons').classList.add('hidden');
-  }
+  const url = location.origin + location.pathname;
+  let ok = false;
+  try{ await navigator.clipboard.writeText(url); ok = true; }catch(e){}
+  document.getElementById('addhome-copied').textContent = ok
+    ? fill(c.addHomeCopied, { browser: IS_IOS ? 'Safari' : 'Chrome' })
+    : url;
 }
 
 function closeAddHomePrompt(){
   STATE.homeScreenPromptShown = true;
   saveState();
   document.getElementById('addhome-modal').classList.add('hidden');
+  renderAddHomeCard();
   maybeShowUclaPopup();
+}
+
+// The Home-tab card stays until the app is on the home screen (or the patient says it is).
+function renderAddHomeCard(){
+  const card = document.getElementById('addhome-card');
+  if(!card) return;
+  const kind = installContext().kind;
+  const show = !STATE.addHomeCardHidden && kind !== 'installed' && (kind !== 'desktop' || !!deferredInstallPrompt);
+  card.classList.toggle('hidden', !show);
+}
+function hideAddHomeCard(){
+  STATE.addHomeCardHidden = true;
+  saveState();
+  renderAddHomeCard();
 }
 
 // Returns raw signed day offset from surgery date (0 = surgery day, negative = before surgery), or null if no date set.
@@ -2398,6 +2595,8 @@ function renderAll(){
   renderResources();
   renderSOS();
   renderProgress();
+  renderAddHomeCard();
+  if(isShown('addhome-modal')) renderAddHome();
   if(uclaDraft) renderUcla(); // e.g. language switched while it's open
 }
 
